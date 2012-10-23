@@ -29,6 +29,12 @@
 def private():
   from itertools import tee
   
+  def checkParse(**kwargs):
+    assert(set(kwargs.keys()) == {'input','lookup','succ','fail'})
+  def checkSucc(**kwargs):
+    assert(set(kwargs.keys()) == {'input'})
+  def checkFail(**kwargs):
+    assert(set(kwargs.keys()) == set())
   def tailEval(val):
     while callable(val):
       val = val()
@@ -64,12 +70,13 @@ def private():
       super(Any,self).__init__()
     def __str__(self):
       return "."
-    def parse(self, **kwargs):
+    def parse(self, input, succ, fail, **kwargs):
+      checkParse(input=input,succ=succ,fail=fail,**kwargs)
       try:
-        next(kwargs['input'])
+        next(input)
       except StopIteration:
-        return kwargs['fail']
-      return lambda : kwargs['succ'](input=kwargs['input'])
+        return fail
+      return lambda : succ(input=input)
   class Match(ParseObject):
     def __init__(self, iter):
       super(Match,self).__init__()
@@ -77,6 +84,7 @@ def private():
     def __str__(self):
       return str(self.iter)
     def parse(self, input, succ, fail, **kwargs):
+      checkParse(input=input,succ=succ,fail=fail,**kwargs)
       return (lambda : succ(input=input)) if begins(self.iter, input) else fail
   class Sequence(ParseObject):
     def __init__(self, *args):
@@ -86,6 +94,7 @@ def private():
     def __str__(self):
       return " & ".join(p.str(self.prec) for p in self.seq)
     def parse(self, input, succ, **kwargs):
+      checkParse(input=input,succ=succ,**kwargs)
       acc = succ
       for p in reversed(self.seq):
         nkwargs = {}
@@ -107,6 +116,7 @@ def private():
     def __str__(self):
       return " | ".join(p.str(self.prec) for p in self.choices)
     def parse(self, input, fail, **kwargs):
+      checkParse(input=input,fail=fail,**kwargs)
       inputs = tee(input, len(self.choices))
       acc = fail
       for i, p in zip(inputs, reversed(self.choices)):
@@ -128,19 +138,20 @@ def private():
     def __str__(self):
       return "-%s" % self.other.str(self.prec)
     def parse(self, input, succ, fail, **kwargs):
+      checkParse(input=input,succ=succ,fail=fail,**kwargs)
       i1, i2 = tee(input)
-      kwargs['input'] = i1
       def bind(i2, succ, fail):
         def succ2(**skwargs):
           nonlocal fail
+          checkSucc(**skwargs)
           return fail
         def fail2(**fkwargs):
           nonlocal i2, succ
-          fkwargs['input'] = i2
-          return succ(**fkwargs)
+          checkFail(**fkwargs)
+          return succ(input=i2,**fkwargs)
         return succ2, fail2
-      kwargs['succ'], kwargs['fail'] = bind(i2, succ, fail)
-      return lambda : self.other.parse(**kwargs)
+      succ, fail = bind(i2, succ, fail)
+      return lambda : self.other.parse(input=i1,succ=succ,fail=fail,**kwargs)
   class Test(ParseObject):
     def __init__(self, other):
       super(Test,self).__init__()
@@ -148,25 +159,32 @@ def private():
     def __str__(self):
       return "+%s" % self.other.str(self.prec)
     def parse(self, input, succ, **kwargs):
+      checkParse(input=input,succ=succ,**kwargs)
       i1, i2 = tee(input)
-      kwargs['input'] = i1
       def bind(i2, succ):
         def succ2(**skwargs):
           nonlocal succ, i2
-          skwargs['input'] = i2
-          return succ(skwargs)
+          checkSucc(input=i2,**skwargs)
+          return succ(input=i2,**skwargs)
         return succ2
-      kwargs['succ']  = bind(i2, succ)
-      return lambda : self.other.parse(**kwargs)
+      succ = bind(i2, succ)
+      return lambda : self.other.parse(input=input,succ=succ,**kwargs)
   class Lookup(ParseObject):
     def __init__(self, name):
       super(Lookup,self).__init__()
       self.name = name
     def __str__(self):
       return "{%s}" % str(name)
-    def parse(self, **kwargs):
-      return lambda : kwargs['lookup'][self.name].parse(**kwargs)
+    def parse(self, lookup, **kwargs):
+      checkParse(lookup=lookup,**kwargs)
+      return lambda : lookup[self.name].parse(lookup=lookup, **kwargs)
   any  = Any()
   def parse(start, lookup, input):
-    return tailEval(lookup[start].parse(input=iter(input), lookup=lookup, succ=lambda input : input, fail=lambda : None))
+    def succ(input, **kwargs):
+      checkSucc(input=input,**kwargs)
+      return input
+    def fail(**kwargs):
+      checkFail(**kwargs)
+      return None
+    return tailEval(lookup[start].parse(input=iter(input), lookup=lookup, succ=succ, fail=fail))
 private()
