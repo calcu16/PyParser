@@ -33,10 +33,12 @@ class TestBase(unittest.TestCase):
   def setUp(self):
     pass
   def runTest(self, lookup, input, start, rest):
-    remainder = base.parse(start, lookup, input)
-    if remainder is not None: remainder = list(remainder)
-    if rest is not None: rest = list(rest)
-    self.assertEqual(remainder, rest)
+    result = base.parse(start, lookup, input)
+    if result is None:
+      self.assertEqual(rest, None)
+    else:
+      match, remainder = result
+      self.assertEqual(list(remainder), list(rest))
   def addTest(name, lookup, input, start, rest):
     setattr(TestBase, "test_" + name, lambda self : self.runTest(lookup, input, start, rest))
 
@@ -61,6 +63,13 @@ tests  = (
     "lookup": lookup,
     "start" : "A",
     "rest"  : "d"
+  },
+  {
+    "name"  : "match_02",
+    "input" : "ab",
+    "lookup": lookup,
+    "start" : "A",
+    "rest"  : None
   },
   {
     "name"  : "sequence",

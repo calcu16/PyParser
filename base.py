@@ -30,15 +30,25 @@ def private():
   from itertools import tee
   
   def checkParse(**kwargs):
-    assert(set(kwargs.keys()) == {'input','lookup','succ','fail'})
+    assert(set(kwargs.keys()) == {'input','lookup','succ','fail','matching'})
   def checkSucc(**kwargs):
-    assert(set(kwargs.keys()) == {'input'})
+    assert(set(kwargs.keys()) == {'match','input'})
   def checkFail(**kwargs):
     assert(set(kwargs.keys()) == set())
   def tailEval(val):
     while callable(val):
       val = val()
     return val
+  
+  global parse
+  def parse(start, lookup, input):
+    def succ(match, input, **kwargs):
+      checkSucc(input=input,match=match,**kwargs)
+      return match, input
+    def fail(**kwargs):
+      checkFail(**kwargs)
+      return None
+    return tailEval(lookup[start].parse(input=iter(input), lookup=lookup, succ=succ, fail=fail, matching=False))
   
   def begins(sub, sup):
     try:
@@ -48,9 +58,6 @@ def private():
       return True
     except StopIteration:
       return False
-  
-  global Match, Lookup
-  global any, parse
   
   class ParseObject(object):
     def __init__(self):
@@ -70,22 +77,26 @@ def private():
       super(Any,self).__init__()
     def __str__(self):
       return "."
-    def parse(self, input, succ, fail, **kwargs):
-      checkParse(input=input,succ=succ,fail=fail,**kwargs)
+    def parse(self, input, succ, fail, matching, **kwargs):
+      checkParse(input=input,succ=succ,fail=fail,matching=matching,**kwargs)
       try:
-        next(input)
+        match = (next(input),)
+        if not matching:
+          match = ()
       except StopIteration:
         return fail
-      return lambda : succ(input=input)
+      return lambda : succ(input=input, match=match)
+  global Match
   class Match(ParseObject):
-    def __init__(self, iter):
+    def __init__(self, match):
       super(Match,self).__init__()
-      self.iter = list(iter)
+      self.match = tuple(iter(match))
     def __str__(self):
-      return str(self.iter)
-    def parse(self, input, succ, fail, **kwargs):
-      checkParse(input=input,succ=succ,fail=fail,**kwargs)
-      return (lambda : succ(input=input)) if begins(self.iter, input) else fail
+      return str(self.match)
+    def parse(self, input, succ, fail, matching, **kwargs):
+      checkParse(input=input,succ=succ,fail=fail,matching=matching, **kwargs)
+      match = self.match if matching else ()
+      return (lambda : succ(input=input,match=self.match)) if begins(self.match, input) else fail
   class Sequence(ParseObject):
     def __init__(self, *args):
       super(Sequence,self).__init__()
@@ -99,14 +110,17 @@ def private():
       for p in reversed(self.seq):
         nkwargs = {}
         nkwargs.update(kwargs)
-        nkwargs['succ'] = acc
-        def bind(p, nkwargs):
-          def succ(input, **skwargs):
+        def bind(p, acc, nkwargs):
+          def succ(input, match, **skwargs):
             nonlocal nkwargs, p
-            nkwargs['input'] = input
-            return p.parse(**nkwargs)
+            match2 = match
+            def succ2(match, **s2kwargs):
+              nonlocal acc, match2
+              return acc(match + match2, **s2kwargs)
+            nkwargs['succ'] = succ2
+            return p.parse(input=input, **nkwargs)
           return succ
-        acc = bind(p, nkwargs)
+        acc = bind(p, acc, nkwargs)
       return lambda : acc(input=input)
   class Choice(ParseObject):
     def __init__(self, *args):
@@ -169,6 +183,7 @@ def private():
         return succ2
       succ = bind(i2, succ)
       return lambda : self.other.parse(input=input,succ=succ,**kwargs)
+  global Lookup
   class Lookup(ParseObject):
     def __init__(self, name):
       super(Lookup,self).__init__()
@@ -178,13 +193,7 @@ def private():
     def parse(self, lookup, **kwargs):
       checkParse(lookup=lookup,**kwargs)
       return lambda : lookup[self.name].parse(lookup=lookup, **kwargs)
+  global any
   any  = Any()
-  def parse(start, lookup, input):
-    def succ(input, **kwargs):
-      checkSucc(input=input,**kwargs)
-      return input
-    def fail(**kwargs):
-      checkFail(**kwargs)
-      return None
-    return tailEval(lookup[start].parse(input=iter(input), lookup=lookup, succ=succ, fail=fail))
+  
 private()
