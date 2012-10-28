@@ -27,24 +27,23 @@
 # either expressed or implied, of the FreeBSD Project.
 
 def private():
-  from .util import fork
-  from .util import identity
-  from .util import lazy
-  from .util import tailEval
-  from .util import begins
+  from .util import begins, fork, identity, lazy, tailEval
   
+  # make sure all parse arguments are correct
   def assertParse(func):
     def decorator(*args, **kwargs):
       nonlocal func
       assert(set(kwargs.keys()) == {'input','lookup','succ','fail','matching','inv'})
       return func(*args, **kwargs)
     return decorator
+  # make sure all succ arguments are correct
   def assertSucc(func):
     def decorator(*args, **kwargs):
       nonlocal func
       assert(set(kwargs.keys()) == {'match','input','result'})
       return func(*args, **kwargs)
     return decorator
+  # make sure all fail arguments are correct
   def assertFail(func):
     def decorator(*args, **kwargs):
       nonlocal func
@@ -52,6 +51,7 @@ def private():
       return func(*args, **kwargs)
     return decorator
   
+  # parse a string given a start and lookup table
   global parse
   def parse(start, lookup, input):
     parseArgs = {
@@ -64,6 +64,7 @@ def private():
     }
     return tailEval(lookup[start].parse(**parseArgs))
   
+  # superclass for all parse objects
   class ParseObject(object):
     def __init__(self):
       self.prec = 0
@@ -77,6 +78,7 @@ def private():
       return Negate(self)
     def __pos__(self):
       return Test(self)
+  # reads in any value
   class Any(ParseObject):
     def __init__(self):
       super(Any,self).__init__()
@@ -91,17 +93,18 @@ def private():
       except StopIteration:
         return fail
       return lazy(succ, input=input, match=match, result={})
-  global Match
-  class Match(ParseObject):
-    def __init__(self, match):
-      super(Match,self).__init__()
-      self.match = tuple(iter(match))
+  # matches exactly a single value
+  global Pattern
+  class Pattern(ParseObject):
+    def __init__(self, pattern):
+      super(Pattern,self).__init__()
+      self.pattern = tuple(iter(pattern))
     def __str__(self):
       return str(self.match)
     @assertParse
     def parse(self, input, succ, fail, matching, **kwargs):
-      match = self.match if matching else ()
-      return lazy(succ,input=input,match=self.match,result={}) if begins(self.match, input) else fail
+      match = self.pattern if matching else ()
+      return lazy(succ,input=input,match=match,result={}) if begins(self.pattern, input) else fail
   class Sequence(ParseObject):
     def __init__(self, *args):
       super(Sequence,self).__init__()
@@ -152,7 +155,7 @@ def private():
       finput = input.fork()
       def bind(input, succ, fail):
         return assertSucc(lambda **skwargs : fail), \
-               assertFail(lambda **fkwargs : succ(input=input, **fkwargs))
+               assertFail(lambda input, **fkwargs : succ(input=input, **fkwargs))
       succ, fail = bind(finput, succ, fail)
       return lambda : self.other.parse(input=input,succ=succ,fail=fail,**kwargs)
   class Test(ParseObject):
@@ -164,21 +167,40 @@ def private():
     @assertParse
     def parse(self, input, succ, **kwargs):
       sinput = input.fork()
-      def bind(input, succ):
-        return assertSucc(lambda **skwargs : succ(input=input, **skwargs))
+      def bind(sinput, succ):
+        return assertSucc(lambda input, **skwargs : succ(input=sinput, **skwargs))
       succ = bind(sinput, succ)
-      return lambda : self.other.parse(input=input,succ=succ,**kwargs)
+      return lazy(self.other.parse,input=input,succ=succ,**kwargs)
   global Lookup
   class Lookup(ParseObject):
     def __init__(self, name):
       super(Lookup,self).__init__()
       self.name = name
     def __str__(self):
-      return "{%s}" % str(name)
+      return "{%s}" % str(self.name)
     @assertParse
     def parse(self, lookup, **kwargs):
-      return lambda : lookup()[self.name].parse(lookup=lookup, **kwargs)
+      return lazy(lookup()[self.name].parse, lookup=lookup, **kwargs)
+  class Match(ParseObject):
+    def __init__(self, match, name):
+      super(Match,self).__init__()
+      self.name = name
+      self.match = match
+    def __str__(self):
+      return "<%s=%s>" % (str(name), str(self.match))
+  class Capture(ParseObject):
+    def __init__(self, match, name, func=identity):
+      super(Capture,self)._init__()
+      self.match = match
+      self.func  = func
+      self.name  = name
+    def __str__(self):
+      return "<%s:%s(%s)>" % (str(self.name), str(self.func.__name__), str(self.match))
+    @assertParse
+    def parse(self, lookup, **kwargs):
+      return 
   global any
   any  = Any()
+  
   
 private()

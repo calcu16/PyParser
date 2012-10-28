@@ -44,10 +44,11 @@ class TestBase(unittest.TestCase):
     setattr(TestBase, "test_" + name, lambda self : self.runTest(lookup, input, start, rest))
 
 lookup = {
-  "A" : base.Match("abc"),
-  "B" : base.Match("abc") | base.Match("def"),
-  "C" : base.Match("ab")  & base.Match("c"),
+  "A" : base.Pattern("abc"),
+  "B" : base.Pattern("abc") | base.Pattern("def"),
+  "C" : base.Pattern("ab")  & base.Pattern("c"),
   "D" : base.Lookup("A"),
+  "E" : +base.Lookup("A"),
 }
 
 tests  = (
@@ -101,6 +102,13 @@ tests  = (
     "lookup": lookup,
     "start" : "D",
     "rest"  : ""
+  },
+  {
+    "name"  : "test_00",
+    "input" : "abc",
+    "lookup": lookup,
+    "start" : "E",
+    "rest"  : "abc"
   }
 )
 
