@@ -27,11 +27,11 @@
 # either expressed or implied, of the FreeBSD Project.
 
 def private():
-  from util import fork
-  from util import identity
-  from util import lazy
-  from util import tailEval
-  from util import begins
+  from .util import fork
+  from .util import identity
+  from .util import lazy
+  from .util import tailEval
+  from .util import begins
   
   def assertParse(func):
     def decorator(*args, **kwargs):
@@ -137,13 +137,9 @@ def private():
       inputs = input.fork(len(self.choices))
       acc = fail
       for i, p in zip(inputs, reversed(self.choices)):
-        nkwargs = {}
-        nkwargs.update(kwargs)
-        nkwargs['input'] = i
-        nkwargs['fail']  = acc
-        def bind(p, nkwargs):
-          return assertFail(lambda **fkwargs : p.parse(**nkwargs))
-        acc = bind(p, nkwargs)
+        def bind(p, input, fail, kwargs):
+          return assertFail(lambda **fkwargs : p.parse(input=input,fail=fail,**kwargs))
+        acc = bind(p, i, acc, kwargs)
       return acc
   class Negate(ParseObject):
     def __init__(self, other):
