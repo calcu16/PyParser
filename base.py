@@ -27,7 +27,11 @@
 # either expressed or implied, of the FreeBSD Project.
 
 def private():
-  from itertools import tee
+  from util import fork
+  from util import identity
+  from util import lazy
+  from util import tailEval
+  from util import begins
   
   def assertParse(func):
     def decorator(*args, **kwargs):
@@ -38,7 +42,7 @@ def private():
   def assertSucc(func):
     def decorator(*args, **kwargs):
       nonlocal func
-      assert(set(kwargs.keys()) == {'match','input'})
+      assert(set(kwargs.keys()) == {'match','input','result'})
       return func(*args, **kwargs)
     return decorator
   def assertFail(func):
@@ -47,31 +51,18 @@ def private():
       assert(set(kwargs.keys()) == set())
       return func(*args, **kwargs)
     return decorator
-  def tailEval(val):
-    while callable(val):
-      val = val()
-    return val
   
   global parse
   def parse(start, lookup, input):
     parseArgs = {
-      'input'     : iter(input),
-      'lookup'    : lookup,
+      'input'     : fork(input),
+      'lookup'    : lazy(identity,lookup),
       'succ'      : assertSucc(lambda match, input, **kwargs : (match,input)),
       'fail'      : assertFail(lambda **kwargs : None),
       'matching'  : False,
       'inv'       : None,
     }
     return tailEval(lookup[start].parse(**parseArgs))
-  
-  def begins(sub, sup):
-    try:
-      for s in sub:
-        if s != next(sup):
-          return False
-      return True
-    except StopIteration:
-      return False
   
   class ParseObject(object):
     def __init__(self):
@@ -99,7 +90,7 @@ def private():
           match = ()
       except StopIteration:
         return fail
-      return lambda : succ(input=input, match=match)
+      return lazy(succ, input=input, match=match, result={})
   global Match
   class Match(ParseObject):
     def __init__(self, match):
@@ -110,7 +101,7 @@ def private():
     @assertParse
     def parse(self, input, succ, fail, matching, **kwargs):
       match = self.match if matching else ()
-      return (lambda : succ(input=input,match=self.match)) if begins(self.match, input) else fail
+      return lazy(succ,input=input,match=self.match,result={}) if begins(self.match, input) else fail
   class Sequence(ParseObject):
     def __init__(self, *args):
       super(Sequence,self).__init__()
@@ -133,7 +124,7 @@ def private():
             return p.parse(input=input, **nkwargs)
           return succ
         acc = bind(p, acc, nkwargs)
-      return lambda : acc(input=input,match=())
+      return lazy(acc,input=input,match=(),result={})
   class Choice(ParseObject):
     def __init__(self, *args):
       super(Choice,self).__init__()
@@ -143,7 +134,7 @@ def private():
       return " | ".join(p.str(self.prec) for p in self.choices)
     @assertParse
     def parse(self, input, fail, **kwargs):
-      inputs = tee(input, len(self.choices))
+      inputs = input.fork(len(self.choices))
       acc = fail
       for i, p in zip(inputs, reversed(self.choices)):
         nkwargs = {}
@@ -162,12 +153,12 @@ def private():
       return "-%s" % self.other.str(self.prec)
     @assertParse
     def parse(self, input, succ, fail, **kwargs):
-      i1, i2 = tee(input)
-      def bind(i2, succ, fail):
+      finput = input.fork()
+      def bind(input, succ, fail):
         return assertSucc(lambda **skwargs : fail), \
-               assertFail(lambda **fkwargs : succ(input=i2, **fkwargs))
-      succ, fail = bind(i2, succ, fail)
-      return lambda : self.other.parse(input=i1,succ=succ,fail=fail,**kwargs)
+               assertFail(lambda **fkwargs : succ(input=input, **fkwargs))
+      succ, fail = bind(finput, succ, fail)
+      return lambda : self.other.parse(input=input,succ=succ,fail=fail,**kwargs)
   class Test(ParseObject):
     def __init__(self, other):
       super(Test,self).__init__()
@@ -176,10 +167,10 @@ def private():
       return "+%s" % self.other.str(self.prec)
     @assertParse
     def parse(self, input, succ, **kwargs):
-      i1, i2 = tee(input)
-      def bind(i2, succ):
-        return assertSucc(lambda **skwargs : succ(input=i2, **skwargs))
-      succ = bind(i2, succ)
+      sinput = input.fork()
+      def bind(input, succ):
+        return assertSucc(lambda **skwargs : succ(input=input, **skwargs))
+      succ = bind(sinput, succ)
       return lambda : self.other.parse(input=input,succ=succ,**kwargs)
   global Lookup
   class Lookup(ParseObject):
@@ -190,7 +181,7 @@ def private():
       return "{%s}" % str(name)
     @assertParse
     def parse(self, lookup, **kwargs):
-      return lambda : lookup[self.name].parse(lookup=lookup, **kwargs)
+      return lambda : lookup()[self.name].parse(lookup=lookup, **kwargs)
   global any
   any  = Any()
   
