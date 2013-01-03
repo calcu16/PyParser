@@ -28,19 +28,24 @@
 
 def private():
   from .util import begins, fork, identity, lazy, tailEval
-  
+  DEBUGGING = False
+  def DEBUG(self, input, **kwargs):
+    if DEBUGGING:
+      input = list(input.fork())
+      print("DEBUG : %s >> %s" % (input, self))
   # make sure all parse arguments are correct
   def assertParse(func):
     def decorator(*args, **kwargs):
       nonlocal func
       assert(set(kwargs.keys()) == {'input','lookup','succ','fail','matching','inv'})
+      DEBUG(*args, **kwargs)
       return func(*args, **kwargs)
     return decorator
   # make sure all succ arguments are correct
   def assertSucc(func):
     def decorator(*args, **kwargs):
       nonlocal func
-      assert(set(kwargs.keys()) == {'match','input','result'})
+      assert(set(kwargs.keys()) == {'match','input','result','fail'})
       return func(*args, **kwargs)
     return decorator
   # make sure all fail arguments are correct
@@ -78,33 +83,52 @@ def private():
       return Negate(self)
     def __pos__(self):
       return Test(self)
+      
   # reads in any value
   class Any(ParseObject):
-    def __init__(self):
+    def __init__(self, count = 1):
       super(Any,self).__init__()
+      self.count = count
     def __str__(self):
-      return "."
+      return ".{%d}" % self.count
     @assertParse
     def parse(self, input, succ, fail, matching, **kwargs):
-      try:
-        match = (next(input),)
-        if not matching:
-          match = ()
-      except StopIteration:
+      match = tuple(next(input) for i in range(self.count))
+      if len(match) < self.count:
         return fail
-      return lazy(succ, input=input, match=match, result={})
+      if not matching:
+        match = ()
+      return lazy(succ, input=input, match=match, result={}, fail=fail)
   # matches exactly a single value
   global Pattern
   class Pattern(ParseObject):
-    def __init__(self, pattern):
+    def __init__(self, pattern=""):
       super(Pattern,self).__init__()
       self.pattern = tuple(iter(pattern))
     def __str__(self):
-      return str(self.match)
+      return str(self.pattern)
     @assertParse
     def parse(self, input, succ, fail, matching, **kwargs):
       match = self.pattern if matching else ()
-      return lazy(succ,input=input,match=match,result={}) if begins(self.pattern, input) else fail
+      return lazy(succ,input=input,match=match,result={},fail=fail) if begins(self.pattern, input) else fail
+  global Set
+  class Set(ParseObject):
+    def __init__(self, values):
+      super(Set,self).__init__()
+      self.values = frozenset(values)
+    def __str__(self):
+      return str(self.values)
+    @assertParse
+    def parse(self, input, succ, fail, matching, **kwargs):
+      try:
+        value = next(input)
+        if value in self.values:
+          if not matching:
+            value = ()
+          return lazy(succ,input=input,match=value,result={},fail=fail)
+      except StopIteration:
+        pass
+      return fail
   class Sequence(ParseObject):
     def __init__(self, *args):
       super(Sequence,self).__init__()
@@ -113,7 +137,7 @@ def private():
     def __str__(self):
       return " & ".join(p.str(self.prec) for p in self.seq)
     @assertParse
-    def parse(self, input, succ, **kwargs):
+    def parse(self, input, succ, fail, **kwargs):
       acc = succ
       for p in reversed(self.seq):
         nkwargs = {}
@@ -121,13 +145,13 @@ def private():
         def bind(p, acc, nkwargs):
           @assertSucc
           def succ(input, match, **skwargs):
-            nonlocal nkwargs, p
+            nonlocal nkwargs, p, fail
             match2 = match
             nkwargs['succ'] = assertSucc(lambda match, **s2kwargs : acc(match=match+match2, **s2kwargs))
-            return p.parse(input=input, **nkwargs)
+            return p.parse(input=input, fail=fail, **nkwargs)
           return succ
         acc = bind(p, acc, nkwargs)
-      return lazy(acc,input=input,match=(),result={})
+      return lazy(acc,input=input,match=(),result={},fail=fail)
   class Choice(ParseObject):
     def __init__(self, *args):
       super(Choice,self).__init__()
@@ -144,6 +168,17 @@ def private():
           return assertFail(lambda **fkwargs : p.parse(input=input,fail=fail,**kwargs))
         acc = bind(p, i, acc, kwargs)
       return acc
+  global Repeat
+  class Repeat(ParseObject):
+    def __init__(self, rep):
+      super(Repeat,self).__init__()
+      self.rep    = rep
+      self.parser = rep & self | epsilon
+    def __str__(self):
+      return "%s*" % str(self.rep)
+    @assertParse
+    def parse(self, **kwargs):
+      return lambda : self.parser.parse(**kwargs)
   class Negate(ParseObject):
     def __init__(self, other):
       super(Negate,self).__init__()
@@ -155,7 +190,7 @@ def private():
       finput = input.fork()
       def bind(input, succ, fail):
         return assertSucc(lambda **skwargs : fail), \
-               assertFail(lambda input, **fkwargs : succ(input=input, **fkwargs))
+               assertFail(lambda **fkwargs : succ(input=input, fail=fail, match=(), result={}, **fkwargs))
       succ, fail = bind(finput, succ, fail)
       return lambda : self.other.parse(input=input,succ=succ,fail=fail,**kwargs)
   class Test(ParseObject):
@@ -200,7 +235,10 @@ def private():
     def parse(self, lookup, **kwargs):
       return 
   global any
-  any  = Any()
-  
-  
+  any     = Any()
+  global eof
+  eof     = -any
+  global epsilon
+  epsilon = Pattern()
+
 private()

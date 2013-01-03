@@ -29,6 +29,7 @@
 def private():
   from collections import deque
   from weakref import ref
+  from copy import copy
   
   global identity
   def identity(val):
@@ -53,8 +54,8 @@ def private():
     def __init__(self, iterable):
       self.iter     = iter(iterable)
       self.children = []
-    def fork(self):
-      child = Fork(self)
+    def fork(self,seed=deque()):
+      child = Fork(self,seed)
       self.children.append(ref(child))
       return child
     def read(self):
@@ -78,14 +79,14 @@ def private():
           child.deque.append(gen(val))
 
   class Fork(object):
-    def __init__(self, parent):
+    def __init__(self, parent, seed = deque()):
       self.parent = parent 
-      self.deque  = deque()
+      self.deque  = copy(seed)
       self.index  = 0
     def fork(self, n=1):
       if n == 1:
-        return self.parent.fork()
-      return tuple(self.parent.fork() for _ in range(n))
+        return self.parent.fork(self.deque)
+      return tuple(self.parent.fork(self.deque) for _ in range(n))
     def __iter__(self):
       return self
     def __next__(self):

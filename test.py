@@ -29,14 +29,13 @@
 import pyparser.base as base
 import unittest
 
-
 class TestBase(unittest.TestCase):
   def setUp(self):
     pass
   def runTest(self, lookup, input, start, rest):
     result = base.parse(start, lookup, input)
-    if result is None:
-      self.assertEqual(rest, None)
+    if rest is None or result is None:
+      self.assertEqual(rest, result)
     else:
       match, remainder = result
       self.assertEqual(list(remainder), list(rest))
@@ -49,9 +48,32 @@ lookup = {
   "C" : base.Pattern("ab")  & base.Pattern("c"),
   "D" : base.Lookup("A"),
   "E" : +base.Lookup("A"),
+  "F" : base.Pattern("ab")  & base.Pattern("c") | base.Pattern("abd"),
+  "G" : base.Lookup("A") | base.Pattern("def"),
+  "H" : base.Pattern("def") | base.Lookup("A"),
+  "I" : base.Lookup("C") | base.Pattern("def"),
+  "J" : base.Pattern("abc") & base.eof,
+}
+
+expression = {
+  "line"  : base.Lookup("expr") & base.eof,
+  "expr"  : base.Lookup("atom"),
+  "atom"  : base.Lookup("NUM")
+          | base.Lookup("LPAREN") & base.Lookup("expr") & base.Lookup("RPAREN"),
+  "LPAREN": base.Pattern("(") & base.Lookup("WS"),
+  "RPAREN": base.Pattern(")") & base.Lookup("WS"),
+  "NUM"   : base.Set("0123456789") & base.Repeat(base.Set("0123456789")) & base.Lookup("WS"),
+  "WS"    : base.Repeat(base.Pattern(" ")),
 }
 
 tests  = (
+  {
+    "name"  : "any_00",
+    "input" : "",
+    "lookup": {"any": base.any},
+    "start" : "any",
+    "rest"  : None
+  },
   {
     "name"  : "match_00",
     "input" : "abc",
@@ -74,11 +96,53 @@ tests  = (
     "rest"  : None
   },
   {
-    "name"  : "sequence",
+    "name"  : "sequence_00",
     "input" : "abc",
     "lookup": lookup,
     "start" : "C",
     "rest"  : ""
+  },
+  {
+    "name"  : "sequence_01",
+    "input" : "ab",
+    "lookup": lookup,
+    "start" : "C",
+    "rest"  : None
+  },
+  {
+    "name"  : "sequence_02",
+    "input" : "c",
+    "lookup": lookup,
+    "start" : "C",
+    "rest"  : None
+  },
+  {
+    "name"  : "sequence_03",
+    "input" : "abd",
+    "lookup": lookup,
+    "start" : "C",
+    "rest"  : None
+  },
+  {
+    "name"  : "sequence_04",
+    "input" : "abc",
+    "lookup": lookup,
+    "start" : "F",
+    "rest"  : ""
+  },
+  {
+    "name"  : "sequence_05",
+    "input" : "abd",
+    "lookup": lookup,
+    "start" : "F",
+    "rest"  : ""
+  },
+  {
+    "name"  : "sequence_06",
+    "input" : "abe",
+    "lookup": lookup,
+    "start" : "F",
+    "rest"  : None
   },
   {
     "name"  : "ordered_00",
@@ -104,12 +168,82 @@ tests  = (
     "rest"  : ""
   },
   {
+    "name"  : "lookup_01",
+    "input" : "abc",
+    "lookup": lookup,
+    "start" : "G",
+    "rest"  : ""
+  },
+  {
+    "name"  : "lookup_02",
+    "input" : "def",
+    "lookup": lookup,
+    "start" : "G",
+    "rest"  : ""
+  },
+  {
+    "name"  : "lookup_03",
+    "input" : "abc",
+    "lookup": lookup,
+    "start" : "H",
+    "rest"  : ""
+  },
+  {
+    "name"  : "lookup_04",
+    "input" : "def",
+    "lookup": lookup,
+    "start" : "H",
+    "rest"  : ""
+  },
+  {
+    "name"  : "lookup_05",
+    "input" : "abc",
+    "lookup": lookup,
+    "start" : "I",
+    "rest"  : ""
+  },
+  {
+    "name"  : "lookup_06",
+    "input" : "def",
+    "lookup": lookup,
+    "start" : "I",
+    "rest"  : ""
+  },
+  {
     "name"  : "test_00",
     "input" : "abc",
     "lookup": lookup,
     "start" : "E",
     "rest"  : "abc"
-  }
+  },
+  {
+    "name"  : "eof_00",
+    "input" : "abc",
+    "lookup": lookup,
+    "start" : "J",
+    "rest"  : ""
+  },
+  {
+    "name"  : "eof_01",
+    "input" : "abcd",
+    "lookup": lookup,
+    "start" : "J",
+    "rest"  : None
+  },
+  {
+    "name"  : "expr_00",
+    "input" : "123",
+    "lookup": expression,
+    "start" : "expr",
+    "rest"  : ""
+  },
+  {
+    "name"  : "expr_01",
+    "input" : "(123)",
+    "lookup": expression,
+    "start" : "line",
+    "rest"  : ""
+  },
 )
 
 for test in tests:
