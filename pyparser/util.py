@@ -108,20 +108,5 @@ def private():
   global fork
   def fork(iterable):
     return ForkFactory(iterable).fork()
-
-  lazy_sentinal = object()
-  global lazy
-  class lazy(object):
-    def __init__(self, func, *args, **kwargs):
-      assert(callable(func))
-      self.func   = func
-      self.args   = args
-      self.kwargs = kwargs
-    def __call__(self):
-      try:
-        return self.result
-      except AttributeError:
-        pass
-      self.result = self.func(*self.args, **self.kwargs)
-      return self.result
+  
 private()

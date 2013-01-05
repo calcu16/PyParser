@@ -28,9 +28,10 @@
 
 def private():
   from copy import copy
+  from functools import partial
   from queue import PriorityQueue
   from sys import stderr
-  from .util import begins, fork, identity, lazy, tailEval, badcall
+  from .util import begins, fork, identity, tailEval, badcall
   DEBUGGING = None
   def DEBUG(self, input, **kwargs):
     nonlocal DEBUGGING
@@ -87,7 +88,7 @@ def private():
     return result, input
   @assertFail
   def FAIL(value, cont, **kwargs):
-    return lazy(cont,fail=FAIL) if value is not None else None
+    return partial(cont,fail=FAIL) if value is not None else None
   class ParseObject(object):
     def __init__(self, grammar=None, children=(), *args, **kwargs):
       super(ParseObject,self).__setattr__('grammar',None)
@@ -118,7 +119,7 @@ def private():
         'inv'       : None,
       }
       return tailEval(self.parse(**parseArgs))
-  DIE = lambda fail : lazy(fail,value=None,cont=badcall)
+  DIE = lambda fail : partial(fail,value=None,cont=badcall)
   # matches any value
   global Any
   class Any(ParseObject):
@@ -137,7 +138,7 @@ def private():
         return DIE(fail)
       if not matching:
         match = ()
-      return lazy(succ, input=input, match=match, result={}, fail=fail)
+      return partial(succ, input=input, match=match, result={}, fail=fail)
   def defaultMatch(match, result):
     return match if not result else result
   # matches the value and saves it in the dictionary
@@ -157,8 +158,8 @@ def private():
         result = {self.name : self.func(match=match,result=result)}
         if not matching:
           match = ()
-        return lazy(succ,match=match,result=result,**skwargs)
-      return lazy(self.sym.parse,succ=save,matching=True,**kwargs)
+        return partial(succ,match=match,result=result,**skwargs)
+      return partial(self.sym.parse,succ=save,matching=True,**kwargs)
   # fails to parse
   global Fail
   class Fail(ParseObject):
@@ -171,8 +172,8 @@ def private():
     def parse(self, fail, succ, input, **kwargs):
       @assertCont
       def cont(fail, **ckwargs):
-        return lazy(succ,input=input,match=(),result={},fail=fail)
-      return lazy(fail,value=self.value,cont=cont)
+        return partial(succ,input=input,match=(),result={},fail=fail)
+      return partial(fail,value=self.value,cont=cont)
   global Pattern
   class Pattern(ParseObject):
     def __init__(self, pattern=(), *args, **kwargs):
@@ -184,7 +185,7 @@ def private():
     def parse(self, input, succ, fail, matching, **kwargs):
       match = self.pattern if matching else ()
       if begins(self.pattern, input):
-        return lazy(succ,input=input,match=match,result={},fail=fail)
+        return partial(succ,input=input,match=match,result={},fail=fail)
       else:
         nonlocal DIE
         return DIE(fail)
@@ -212,12 +213,12 @@ def private():
               nonlocal match2, result2
               result2.update(result)
               match2 = match + match2
-              return lazy(acc,match=match2, result=result2, **s2kwargs)
+              return partial(acc,match=match2, result=result2, **s2kwargs)
             nkwargs['succ'] = succ2
-            return lazy(p.parse,input=input,fail=fail,**nkwargs)
+            return partial(p.parse,input=input,fail=fail,**nkwargs)
           return succ
         acc = bind(p, acc, nkwargs)
-      return lazy(acc,input=input,match=(),result={},fail=fail)
+      return partial(acc,input=input,match=(),result={},fail=fail)
   # an ordered choice
   global Choice
   class Choice(ParseObject):
