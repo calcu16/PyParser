@@ -26,223 +26,149 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-import pyparser.base as base
+from pyparser.base import Grammar, Any, Fail, Pattern, Save, Sequence
 import unittest
+
+grammar = Grammar()
+grammar["any0"]        = Any()
+grammar["any1"]        = Any(count=2)
+grammar["cont0"]       = Fail(value=None)
+grammar["cont1"]       = Fail(value=1)
+grammar["pattern0"]    = Pattern("")
+grammar["pattern1"]    = Pattern("abc")
+grammar["save0"]       = Save(Any(), "save")
+grammar["save1"]       = Save(Any(count=2), "save")
+grammar["save2"]       = Save(Save(Any(), "save"), "save")
+grammar["save3"]       = Save(Pattern("abc"),"save")
+grammar["sequence0"]   = Sequence(children=[Any(),Any()])
 
 class TestBase(unittest.TestCase):
   def setUp(self):
     pass
-  def runTest(self, lookup, input, start, rest):
-    result = base.parse(start, lookup, input)
+  def runTest(self, input, start, rest, value):
+    global grammar
+    result = grammar[start] << input
     if rest is None or result is None:
       self.assertEqual(rest, result)
     else:
-      match, remainder = result
+      actual, remainder = result
+      self.assertEqual(actual, value)
       self.assertEqual(list(remainder), list(rest))
-  def addTest(name, lookup, input, start, rest):
-    setattr(TestBase, "test_" + name, lambda self : self.runTest(lookup, input, start, rest))
-
-lookup = {
-  "A" : base.Pattern("abc"),
-  "B" : base.Pattern("abc") | base.Pattern("def"),
-  "C" : base.Pattern("ab")  & base.Pattern("c"),
-  "D" : base.Lookup("A"),
-  "E" : +base.Lookup("A"),
-  "F" : base.Pattern("ab")  & base.Pattern("c") | base.Pattern("abd"),
-  "G" : base.Lookup("A") | base.Pattern("def"),
-  "H" : base.Pattern("def") | base.Lookup("A"),
-  "I" : base.Lookup("C") | base.Pattern("def"),
-  "J" : base.Pattern("abc") & base.eof,
-}
-
-expression = {
-  "line"  : base.Lookup("expr") & base.eof,
-  "expr"  : base.Lookup("atom"),
-  "atom"  : base.Lookup("NUM")
-          | base.Lookup("LPAREN") & base.Lookup("expr") & base.Lookup("RPAREN"),
-  "LPAREN": base.Pattern("(") & base.Lookup("WS"),
-  "RPAREN": base.Pattern(")") & base.Lookup("WS"),
-  "NUM"   : base.Set("0123456789") & base.Repeat(base.Set("0123456789")) & base.Lookup("WS"),
-  "WS"    : base.Repeat(base.Pattern(" ")),
-}
+  def addTest(name, input, start, rest, value):
+    setattr(TestBase, "test_" + name, lambda self : self.runTest(input, start, rest, value))
 
 tests  = (
   {
     "name"  : "any_00",
     "input" : "",
-    "lookup": {"any": base.any},
-    "start" : "any",
-    "rest"  : None
+    "start" : "any0",
+    "rest"  : None,
+    "value" : {}
   },
   {
-    "name"  : "match_00",
-    "input" : "abc",
-    "lookup": lookup,
-    "start" : "A",
-    "rest"  : ""
+    "name"  : "any_01",
+    "input" : "a",
+    "start" : "any0",
+    "rest"  : "",
+    "value" : {}
   },
   {
-    "name"  : "match_01",
-    "input" : "abcd",
-    "lookup": lookup,
-    "start" : "A",
-    "rest"  : "d"
-  },
-  {
-    "name"  : "match_02",
+    "name"  : "any_02",
     "input" : "ab",
-    "lookup": lookup,
-    "start" : "A",
-    "rest"  : None
+    "start" : "any0",
+    "rest"  : "b",
+    "value" : {}
+  },
+  {
+    "name"  : "any_03",
+    "input" : "ab",
+    "start" : "any1",
+    "rest"  : "",
+    "value" : {}
+  },
+  {
+    "name"  : "cont_00",
+    "input" : "",
+    "start" : "cont0",
+    "rest"  : None,
+    "value" : None
+  },
+  {
+    "name"  : "cont_01",
+    "input" : "",
+    "start" : "cont1",
+    "rest"  : "",
+    "value" : {}
+  },
+  {
+    "name"  : "pattern_00",
+    "input" : "",
+    "start" : "pattern0",
+    "rest"  : "",
+    "value" : {}
+  },
+  {
+    "name"  : "pattern_01",
+    "input" : "abc",
+    "start" : "pattern0",
+    "rest"  : "abc",
+    "value" : {}
+  },
+  {
+    "name"  : "pattern_02",
+    "input" : "abc",
+    "start" : "pattern1",
+    "rest"  : "",
+    "value" : {}
+  },
+  {
+    "name"  : "pattern_03",
+    "input" : "abcdef",
+    "start" : "pattern1",
+    "rest"  : "def",
+    "value" : {}
+  },
+  {
+    "name"  : "save_00",
+    "input" : "ab",
+    "start" : "save0",
+    "rest"  : "b",
+    "value" : {"save":("a",)}
+  },
+  {
+    "name"  : "save_01",
+    "input" : "",
+    "start" : "save0",
+    "rest"  : None,
+    "value" : None
+  },
+  {
+    "name"  : "save_02",
+    "input" : "abc",
+    "start" : "save1",
+    "rest"  : "c",
+    "value" : {"save":("a","b")}
+  },
+  {
+    "name"  : "save_03",
+    "input" : "ab",
+    "start" : "save2",
+    "rest"  : "b",
+    "value" : {"save":{"save":("a",)}}
+  },
+  {
+    "name"  : "save_04",
+    "input" : "abc",
+    "start" : "save3",
+    "rest"  : "",
+    "value" : {"save":("a","b","c")}
   },
   {
     "name"  : "sequence_00",
     "input" : "abc",
-    "lookup": lookup,
-    "start" : "C",
-    "rest"  : ""
-  },
-  {
-    "name"  : "sequence_01",
-    "input" : "ab",
-    "lookup": lookup,
-    "start" : "C",
-    "rest"  : None
-  },
-  {
-    "name"  : "sequence_02",
-    "input" : "c",
-    "lookup": lookup,
-    "start" : "C",
-    "rest"  : None
-  },
-  {
-    "name"  : "sequence_03",
-    "input" : "abd",
-    "lookup": lookup,
-    "start" : "C",
-    "rest"  : None
-  },
-  {
-    "name"  : "sequence_04",
-    "input" : "abc",
-    "lookup": lookup,
-    "start" : "F",
-    "rest"  : ""
-  },
-  {
-    "name"  : "sequence_05",
-    "input" : "abd",
-    "lookup": lookup,
-    "start" : "F",
-    "rest"  : ""
-  },
-  {
-    "name"  : "sequence_06",
-    "input" : "abe",
-    "lookup": lookup,
-    "start" : "F",
-    "rest"  : None
-  },
-  {
-    "name"  : "ordered_00",
-    "input" : "abc",
-    "lookup": lookup,
-    "start" : "B",
-    "rest"  : ""
-    
-  },
-  {
-    "name"  : "ordered_01",
-    "input" : "def",
-    "lookup": lookup,
-    "start" : "B",
-    "rest"  : ""
-    
-  },
-  {
-    "name"  : "lookup_00",
-    "input" : "abc",
-    "lookup": lookup,
-    "start" : "D",
-    "rest"  : ""
-  },
-  {
-    "name"  : "lookup_01",
-    "input" : "abc",
-    "lookup": lookup,
-    "start" : "G",
-    "rest"  : ""
-  },
-  {
-    "name"  : "lookup_02",
-    "input" : "def",
-    "lookup": lookup,
-    "start" : "G",
-    "rest"  : ""
-  },
-  {
-    "name"  : "lookup_03",
-    "input" : "abc",
-    "lookup": lookup,
-    "start" : "H",
-    "rest"  : ""
-  },
-  {
-    "name"  : "lookup_04",
-    "input" : "def",
-    "lookup": lookup,
-    "start" : "H",
-    "rest"  : ""
-  },
-  {
-    "name"  : "lookup_05",
-    "input" : "abc",
-    "lookup": lookup,
-    "start" : "I",
-    "rest"  : ""
-  },
-  {
-    "name"  : "lookup_06",
-    "input" : "def",
-    "lookup": lookup,
-    "start" : "I",
-    "rest"  : ""
-  },
-  {
-    "name"  : "test_00",
-    "input" : "abc",
-    "lookup": lookup,
-    "start" : "E",
-    "rest"  : "abc"
-  },
-  {
-    "name"  : "eof_00",
-    "input" : "abc",
-    "lookup": lookup,
-    "start" : "J",
-    "rest"  : ""
-  },
-  {
-    "name"  : "eof_01",
-    "input" : "abcd",
-    "lookup": lookup,
-    "start" : "J",
-    "rest"  : None
-  },
-  {
-    "name"  : "expr_00",
-    "input" : "123",
-    "lookup": expression,
-    "start" : "expr",
-    "rest"  : ""
-  },
-  {
-    "name"  : "expr_01",
-    "input" : "(123)",
-    "lookup": expression,
-    "start" : "line",
-    "rest"  : ""
+    "start" : "sequence0",
+    "rest"  : "c",
+    "value" : {}
   },
 )
 

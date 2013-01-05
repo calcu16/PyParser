@@ -27,17 +27,26 @@
 # either expressed or implied, of the FreeBSD Project.
 
 def private():
-  from .util import begins, fork, identity, lazy, tailEval
-  DEBUGGING = False
+  from copy import copy
+  from queue import PriorityQueue
+  from sys import stderr
+  from .util import begins, fork, identity, lazy, tailEval, badcall
+  DEBUGGING = None
   def DEBUG(self, input, **kwargs):
+    nonlocal DEBUGGING
     if DEBUGGING:
       input = list(input.fork())
-      print("DEBUG : %s >> %s" % (input, self))
+      print("DEBUG : %s >> %s" % (input, self), file=DEBUGGING)
+  def ASSERTEQ(
+  a, b):
+    if DEBUGGING and not a == b:
+      print("%s != %s" % (a, b), file=DEBUGGING)
+    assert(a == b)
   # make sure all parse arguments are correct
   def assertParse(func):
     def decorator(*args, **kwargs):
       nonlocal func
-      assert(set(kwargs.keys()) == {'input','lookup','succ','fail','matching','inv'})
+      ASSERTEQ(set(kwargs.keys()), {'input','succ','fail','matching','inv'})
       DEBUG(*args, **kwargs)
       return func(*args, **kwargs)
     return decorator
@@ -45,200 +54,181 @@ def private():
   def assertSucc(func):
     def decorator(*args, **kwargs):
       nonlocal func
-      assert(set(kwargs.keys()) == {'match','input','result','fail'})
+      ASSERTEQ(set(kwargs.keys()), {'match','input','result','fail'})
       return func(*args, **kwargs)
     return decorator
   # make sure all fail arguments are correct
   def assertFail(func):
     def decorator(*args, **kwargs):
       nonlocal func
-      assert(set(kwargs.keys()) == set())
+      ASSERTEQ(set(kwargs.keys()), {'value','cont'})
+      return func(*args, **kwargs)
+    return decorator
+  # make sure all continuation arguments are correct
+  def assertCont(func):
+    def decorator(*args, **kwargs):
+      nonlocal func
+      ASSERTEQ(set(kwargs.keys()), {'fail'})
       return func(*args, **kwargs)
     return decorator
   
-  # parse a string given a start and lookup table
-  global parse
-  def parse(start, lookup, input):
-    parseArgs = {
-      'input'     : fork(input),
-      'lookup'    : lazy(identity,lookup),
-      'succ'      : assertSucc(lambda match, input, **kwargs : (match,input)),
-      'fail'      : assertFail(lambda **kwargs : None),
-      'matching'  : False,
-      'inv'       : None,
-    }
-    return tailEval(lookup[start].parse(**parseArgs))
-  
-  # superclass for all parse objects
-  class ParseObject(object):
+  global Grammar
+  class Grammar(object):
     def __init__(self):
-      self.prec = 0
+      self.lookup   = {}
+    def __setitem__(self, name, item):
+      self.lookup[name] = item
+      item.grammar = self
+    def __getitem__(self, name):
+      return self.lookup[name]
+  
+  @assertSucc
+  def SUCC(match, input, result, **kwargs):
+    return result, input
+  @assertFail
+  def FAIL(value, cont, **kwargs):
+    return lazy(cont,fail=FAIL) if value is not None else None
+  class ParseObject(object):
+    def __init__(self, grammar=None, children=(), *args, **kwargs):
+      super(ParseObject,self).__setattr__('grammar',None)
+      self.children = tuple(children)
+      self.grammar  = grammar
+      self.prec     = 0
+    def __setattr__(self, name, value):
+      update = False
+      if name == "grammar":
+        assert(value is None or issubclass(type(value), Grammar))
+        update = value is not None and value != self.grammar
+        # only update the grammar if the grammar is unassigned
+        if update:
+          assert(self.grammar is None)
+      super(ParseObject,self).__setattr__(name, value)
+      if update:
+        for child in self.children: child.grammar = value
     def str(self, prec):
-      return ("(% s )" if prec < self.prec else "%s") % str(self)
-    def __and__(lhs, rhs):
-      return Sequence(lhs, rhs)
-    def __or__(lhs, rhs):
-      return Choice(lhs, rhs)
-    def __neg__(self):
-      return Negate(self)
-    def __pos__(self):
-      return Test(self)
-      
-  # reads in any value
+      return ("( %s )" if prec < self.prec else "%s") % str(self)
+    def __lshift__(self, input):
+      nonlocal SUCC, FAIL
+      assert(self.grammar is not None)
+      parseArgs = {
+        'input'     : fork(input),
+        'succ'      : SUCC,
+        'fail'      : FAIL,
+        'matching'  : False,
+        'inv'       : None,
+      }
+      return tailEval(self.parse(**parseArgs))
+  DIE = lambda fail : lazy(fail,value=None,cont=badcall)
+  # matches any value
+  global Any
   class Any(ParseObject):
-    def __init__(self, count = 1):
-      super(Any,self).__init__()
+    def __init__(self, count = 1, *args, **kwargs):
+      super(Any,self).__init__(*args,**kwargs)
       self.count = count
     def __str__(self):
+      if self.count <= 0: return ""
+      if self.count == 1: return "."
       return ".{%d}" % self.count
     @assertParse
     def parse(self, input, succ, fail, matching, **kwargs):
       match = tuple(next(input) for i in range(self.count))
       if len(match) < self.count:
-        return fail
+        nonlocal DIE
+        return DIE(fail)
       if not matching:
         match = ()
       return lazy(succ, input=input, match=match, result={}, fail=fail)
-  # matches exactly a single value
+  def defaultMatch(match, result):
+    return match if not result else result
+  # matches the value and saves it in the dictionary
+  global Save
+  class Save(ParseObject):
+    def __init__(self, sym, name, func=defaultMatch, *args, **kwargs):
+      super(Save,self).__init__(grammar=sym.grammar, children=[sym], *args, **kwargs)
+      self.sym  = sym
+      self.name = name
+      self.func = func
+    def __str__(self):
+      return "(?P<%s>%s)" % (self.name, self.sym)
+    @assertParse
+    def parse(self, succ, matching, **kwargs):
+      def save(match, result, **skwargs):
+        nonlocal self, succ, matching
+        result = {self.name : self.func(match=match,result=result)}
+        if not matching:
+          match = ()
+        return lazy(succ,match=match,result=result,**skwargs)
+      return lazy(self.sym.parse,succ=save,matching=True,**kwargs)
+  # fails to parse
+  global Fail
+  class Fail(ParseObject):
+    def __init__(self, value=None, *args, **kwargs):
+      super(Fail,self).__init__(*args, **kwargs)
+      self.value = value
+    def __str__(self):
+      return "!" if self.value is None else "#%d" % self.value
+    @assertParse
+    def parse(self, fail, succ, input, **kwargs):
+      @assertCont
+      def cont(fail, **ckwargs):
+        return lazy(succ,input=input,match=(),result={},fail=fail)
+      return lazy(fail,value=self.value,cont=cont)
   global Pattern
   class Pattern(ParseObject):
-    def __init__(self, pattern=""):
-      super(Pattern,self).__init__()
+    def __init__(self, pattern=(), *args, **kwargs):
+      super(Pattern,self).__init__(*args,**kwargs)
       self.pattern = tuple(iter(pattern))
     def __str__(self):
       return str(self.pattern)
     @assertParse
     def parse(self, input, succ, fail, matching, **kwargs):
       match = self.pattern if matching else ()
-      return lazy(succ,input=input,match=match,result={},fail=fail) if begins(self.pattern, input) else fail
-  global Set
-  class Set(ParseObject):
-    def __init__(self, values):
-      super(Set,self).__init__()
-      self.values = frozenset(values)
-    def __str__(self):
-      return str(self.values)
-    @assertParse
-    def parse(self, input, succ, fail, matching, **kwargs):
-      try:
-        value = next(input)
-        if value in self.values:
-          if not matching:
-            value = ()
-          return lazy(succ,input=input,match=value,result={},fail=fail)
-      except StopIteration:
-        pass
-      return fail
+      if begins(self.pattern, input):
+        return lazy(succ,input=input,match=match,result={},fail=fail)
+      else:
+        nonlocal DIE
+        return DIE(fail)
+  # a sequence of symbols
+  global Sequence
   class Sequence(ParseObject):
-    def __init__(self, *args):
-      super(Sequence,self).__init__()
-      self.seq = args
+    def __init__(self, *args, **kwargs):
+      super(Sequence,self).__init__(*args,**kwargs)
       self.prec = 1
     def __str__(self):
-      return " & ".join(p.str(self.prec) for p in self.seq)
+      return "".join(p.str(self.prec) for p in self.children)
     @assertParse
     def parse(self, input, succ, fail, **kwargs):
       acc = succ
-      for p in reversed(self.seq):
+      for p in reversed(self.children):
         nkwargs = {}
         nkwargs.update(kwargs)
         def bind(p, acc, nkwargs):
           @assertSucc
-          def succ(input, match, **skwargs):
+          def succ(input, match, result, **skwargs):
             nonlocal nkwargs, p, fail
             match2 = match
-            nkwargs['succ'] = assertSucc(lambda match, **s2kwargs : acc(match=match+match2, **s2kwargs))
-            return p.parse(input=input, fail=fail, **nkwargs)
+            result2 = copy(result)
+            def succ2(match, result, **s2kwargs):
+              nonlocal match2, result2
+              result2.update(result)
+              match2 = match + match2
+              return lazy(acc,match=match2, result=result2, **s2kwargs)
+            nkwargs['succ'] = succ2
+            return lazy(p.parse,input=input,fail=fail,**nkwargs)
           return succ
         acc = bind(p, acc, nkwargs)
       return lazy(acc,input=input,match=(),result={},fail=fail)
+  # an ordered choice
+  global Choice
   class Choice(ParseObject):
-    def __init__(self, *args):
-      super(Choice,self).__init__()
-      self.choices = args
+    def __init__(self, *args, **kwargs):
+      super(Choice,self).__init__(*args,**kwargs)
       self.prec = 2
     def __str__(self):
-      return " | ".join(p.str(self.prec) for p in self.choices)
+      return "|".join(p.str(self.prec) for p in self.choices)
     @assertParse
     def parse(self, input, fail, **kwargs):
-      inputs = input.fork(len(self.choices))
-      acc = fail
-      for i, p in zip(inputs, reversed(self.choices)):
-        def bind(p, input, fail, kwargs):
-          return assertFail(lambda **fkwargs : p.parse(input=input,fail=fail,**kwargs))
-        acc = bind(p, i, acc, kwargs)
-      return acc
-  global Repeat
-  class Repeat(ParseObject):
-    def __init__(self, rep):
-      super(Repeat,self).__init__()
-      self.rep    = rep
-      self.parser = rep & self | epsilon
-    def __str__(self):
-      return "%s*" % str(self.rep)
-    @assertParse
-    def parse(self, **kwargs):
-      return lambda : self.parser.parse(**kwargs)
-  class Negate(ParseObject):
-    def __init__(self, other):
-      super(Negate,self).__init__()
-      self.other = other
-    def __str__(self):
-      return "-%s" % self.other.str(self.prec)
-    @assertParse
-    def parse(self, input, succ, fail, **kwargs):
-      finput = input.fork()
-      def bind(input, succ, fail):
-        return assertSucc(lambda **skwargs : fail), \
-               assertFail(lambda **fkwargs : succ(input=input, fail=fail, match=(), result={}, **fkwargs))
-      succ, fail = bind(finput, succ, fail)
-      return lambda : self.other.parse(input=input,succ=succ,fail=fail,**kwargs)
-  class Test(ParseObject):
-    def __init__(self, other):
-      super(Test,self).__init__()
-      self.other = other
-    def __str__(self):
-      return "+%s" % self.other.str(self.prec)
-    @assertParse
-    def parse(self, input, succ, **kwargs):
-      sinput = input.fork()
-      def bind(sinput, succ):
-        return assertSucc(lambda input, **skwargs : succ(input=sinput, **skwargs))
-      succ = bind(sinput, succ)
-      return lazy(self.other.parse,input=input,succ=succ,**kwargs)
-  global Lookup
-  class Lookup(ParseObject):
-    def __init__(self, name):
-      super(Lookup,self).__init__()
-      self.name = name
-    def __str__(self):
-      return "{%s}" % str(self.name)
-    @assertParse
-    def parse(self, lookup, **kwargs):
-      return lazy(lookup()[self.name].parse, lookup=lookup, **kwargs)
-  class Match(ParseObject):
-    def __init__(self, match, name):
-      super(Match,self).__init__()
-      self.name = name
-      self.match = match
-    def __str__(self):
-      return "<%s=%s>" % (str(name), str(self.match))
-  class Capture(ParseObject):
-    def __init__(self, match, name, func=identity):
-      super(Capture,self)._init__()
-      self.match = match
-      self.func  = func
-      self.name  = name
-    def __str__(self):
-      return "<%s:%s(%s)>" % (str(self.name), str(self.func.__name__), str(self.match))
-    @assertParse
-    def parse(self, lookup, **kwargs):
-      return 
-  global any
-  any     = Any()
-  global eof
-  eof     = -any
-  global epsilon
-  epsilon = Pattern()
-
+      inputs = input.fork(len(self.children))
+      queue  = PriorityQueue(len(self.children))
+      
 private()

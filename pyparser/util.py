@@ -35,6 +35,10 @@ def private():
   def identity(val):
     return val
   
+  global badcall
+  def badcall(*arg, **kwargs):
+    assert(False)
+  
   global tailEval
   def tailEval(val):
     while callable(val):
@@ -109,6 +113,7 @@ def private():
   global lazy
   class lazy(object):
     def __init__(self, func, *args, **kwargs):
+      assert(callable(func))
       self.func   = func
       self.args   = args
       self.kwargs = kwargs
