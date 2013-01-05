@@ -26,7 +26,7 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from pyparser.base import Grammar, Any, Fail, Pattern, Save
+from pyparser import Grammar, Any, Fail, Pattern
 import unittest
 
 grammar = Grammar()

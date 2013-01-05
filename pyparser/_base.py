@@ -31,7 +31,7 @@ def private():
   from functools import partial
   from queue import PriorityQueue
   from sys import stderr
-  from .util import begins, fork, identity, tailEval, badcall
+  from ._util import begins, fork, identity, tailEval, badcall
   DEBUGGING = None
   def DEBUG(self, input, **kwargs):
     nonlocal DEBUGGING
@@ -156,7 +156,6 @@ def private():
   def defaultMatch(match, result):
     return match if not result else result
   # matches the value and saves it in the dictionary
-  global Save
   class Save(ParseObject):
     def __init__(self, sym, name, func=defaultMatch, *args, **kwargs):
       super(Save,self).__init__(grammar=sym.grammar, children=[sym], *args, **kwargs)
