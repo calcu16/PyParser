@@ -258,9 +258,9 @@ def private():
     def parse(self, input, fail, pmatch, **kwargs):
       inputs = input.fork(len(self.children))
       queue  = PriorityQueue(len(self.children))
-      loc = pmatch.loc
+      loc = pmatch.loc()
       self.nomatch(pmatch)
-      pmatch.loc = loc
+      pmatch.loc(loc)
       pmatches = (deepcopy(pmatch),) + tuple(deepcopy(child.nomatch(pmatch)) for child in self.children)
       for i, (input,child) in enumerate(zip(inputs,self.children)):
         queue.put((0,i,partial(child.parse,input=input,pmatch=pmatches[i],**kwargs)))

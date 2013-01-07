@@ -11,11 +11,17 @@ def private():
       self._parent    = parent
       self._isstr     = isstr
       self._matching  = matching
-      self.loc        = 0
+      self._loc       = 0
       if result is None:
         self._result    = "" if isstr else ()
       else:
         self._result    = result
+    def loc(self,value=None):
+      if value is not None:
+        if self._parent:
+          self._parent.loc(self._parent.loc() + self._loc - value)
+        self._loc = value
+      return self._loc
     def parent(self):
       return self._parent
     def root(self):
@@ -24,11 +30,11 @@ def private():
       if self._parent is not None:
         self._parent._add(value, name)
       if name is None:
-        if value is not None and self.loc < len(self._groups):
-          self._groups[self.loc] = value
-        elif self.loc == len(self._groups):
+        if value is not None and self._loc < len(self._groups):
+          self._groups[self._loc] = value
+        elif self._loc == len(self._groups):
           self._groups.append(value)
-        self.loc += 1
+        self._loc += 1
       elif value is not None or name not in self._groupdict:
         self._groupdict[name] = value
     def child(self, start, name=None):
