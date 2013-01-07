@@ -26,13 +26,12 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from pyparser import Grammar, Any, Pattern # , Fail, Pattern
+from pyparser import Grammar, Any, Fail, Pattern
 import unittest
 
 grammar = Grammar()
 grammar["any0"]        = Any()
 grammar["any1"]        = Any(count=2)
-'''
 grammar["choice0"]     = (Pattern("a") | Pattern("b"))("save")
 grammar["choice1"]     = Fail(value=1) & Any()("save") & Any() \
                        | Fail(value=2) & Any() & Any()("save")
@@ -44,7 +43,6 @@ grammar["choice4"]     = Any()("save") & Any() & Fail(value=2) \
                        | Any() & Any()("save") & Fail(value=1)
 grammar["cont0"]       = Fail(value=None)
 grammar["cont1"]       = Fail(value=1)
-'''
 grammar["pattern0"]    = Pattern("")
 grammar["pattern1"]    = Pattern("abc")
 grammar["save0"]       = Any()("save")
@@ -52,14 +50,11 @@ grammar["save1"]       = (Any(count=2))("save")
 grammar["save2"]       = (Any())("save")("save")
 grammar["save3"]       = (Any())("save")("save2")
 grammar["save4"]       = (Pattern("abc"))("save")
-
-'''
 grammar["sequence0"]   = Any() & Any()
 grammar["sequence1"]   = (Any())("save") & Any()
 grammar["sequence2"]   = Any() & (Any())("save")
 grammar["sequence3"]   = Any() & (Any())("save") & Fail(value=1)
 grammar["sequence4"]   = (Any())("save0") & (Any())("save1")
-'''
 
 class TestBase(unittest.TestCase):
   def setUp(self):
@@ -72,12 +67,9 @@ class TestBase(unittest.TestCase):
     else:
       self.assertIsNotNone(result)
       pmatch, remainder = result
-      if groups is not None:
-        self.assertEqual(pmatch.groups(), groups)
-      if groupd is not None:
-        self.assertEqual(pmatch.groupdict(), groupd)
-      if rest is not None:
-        self.assertEqual(list(remainder), list(rest))
+      self.assertEqual(pmatch.groups(), () if groups is None else groups)
+      self.assertEqual(pmatch.groupdict(), {} if groupd is None else groupd)
+      self.assertEqual(list(remainder), list("" if rest is None else rest))
   def addTest(name, input, start, rest=None, groups=None, groupd=None):
     setattr(TestBase, "test_" + name, lambda self : self.runTest(input, start, rest, groups, groupd))
 
@@ -106,97 +98,90 @@ tests  = (
     "start" : "any1",
     "rest"  : "",
   },
-  # {
-    # "name"  : "choice_00",
-    # "input" : "ac",
-    # "start" : "choice0",
-    # "rest"  : "c",
-    # "groups" : {"save":"a"}
-  # },
-  # {
-    # "name"  : "choice_01",
-    # "input" : "bc",
-    # "start" : "choice0",
-    # "rest"  : "c",
-    # "groups" : {"save":"b"}
-  # },
-  # {
-    # "name"  : "choice_02",
-    # "input" : "c",
-    # "start" : "choice0",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "choice_03",
-    # "input" : "abc",
-    # "start" : "choice1",
-    # "rest"  : "c",
-    # "groups" : {"save":"a"}
-  # },
-  # {
-    # "name"  : "choice_04",
-    # "input" : "c",
-    # "start" : "choice1",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "choice_05",
-    # "input" : "abc",
-    # "start" : "choice2",
-    # "rest"  : "c",
-    # "groups" : {"save":"b"}
-  # },
-  # {
-    # "name"  : "choice_06",
-    # "input" : "c",
-    # "start" : "choice2",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "choice_07",
-    # "input" : "abc",
-    # "start" : "choice3",
-    # "rest"  : "c",
-    # "groups" : {"save":"a"}
-  # },
-  # {
-    # "name"  : "choice_08",
-    # "input" : "c",
-    # "start" : "choice3",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "choice_09",
-    # "input" : "abc",
-    # "start" : "choice4",
-    # "rest"  : "c",
-    # "groups" : {"save":"b"}
-  # },
-  # {
-    # "name"  : "choice_10",
-    # "input" : "c",
-    # "start" : "choice4",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "cont_00",
-    # "input" : "",
-    # "start" : "cont0",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "cont_01",
-    # "input" : "",
-    # "start" : "cont1",
-    # "rest"  : "",
-    # "groups" : {}
-  # },
+  {
+    "name"  : "choice_00",
+    "input" : "ac",
+    "start" : "choice0",
+    "rest"  : "c",
+    "groups": ("a",),
+    "groupd": {"save":"a"}
+   },
+  {
+    "name"  : "choice_01",
+    "input" : "bc",
+    "start" : "choice0",
+    "rest"  : "c",
+    "groups": ("b",),
+    "groupd": {"save":"b"}
+  },
+  {
+    "name"  : "choice_02",
+    "input" : "c",
+    "start" : "choice0",
+  },
+  {
+    "name"  : "choice_03",
+    "input" : "abc",
+    "start" : "choice1",
+    "rest"  : "c",
+    "groups": ("a",None),
+    "groupd": {"save":"a"}
+  },
+  {
+    "name"  : "choice_04",
+    "input" : "c",
+    "start" : "choice1",
+  },
+  {
+    "name"  : "choice_05",
+    "input" : "abc",
+    "start" : "choice2",
+    "rest"  : "c",
+    "groups": (None,"b"),
+    "groupd": {"save":"b"}
+  },
+  {
+    "name"  : "choice_06",
+    "input" : "c",
+    "start" : "choice2",
+  },
+  {
+    "name"  : "choice_07",
+    "input" : "abc",
+    "start" : "choice3",
+    "rest"  : "c",
+    "groups": ("a",None),
+    "groupd": {"save":"a"}
+  },
+  {
+    "name"  : "choice_08",
+    "input" : "c",
+    "start" : "choice3",
+  },
+  {
+    "name"  : "choice_09",
+    "input" : "abc",
+    "start" : "choice4",
+    "rest"  : "c",
+    "groups": (None,"b"),
+    "groupd": {"save":"b"}
+  },
+  {
+    "name"  : "choice_10",
+    "input" : "c",
+    "start" : "choice4",
+  },
+  {
+    "name"  : "cont_00",
+    "input" : "",
+    "start" : "cont0",
+  },
+  {
+    "name"  : "cont_01",
+    "input" : "",
+    "start" : "cont1",
+    "rest"  : "",
+  },
   {
     "name"  : "pattern_00",
     "input" : "",
@@ -239,7 +224,7 @@ tests  = (
     "input" : "abc",
     "start" : "save1",
     "rest"  : "c",
-    "groups" : ("ab",),
+    "groups": ("ab",),
     "groupd": {"save":"ab"}
   },
   {
@@ -247,7 +232,7 @@ tests  = (
     "input" : "ab",
     "start" : "save2",
     "rest"  : "b",
-    "groups" : ("a","a"),
+    "groups": ("a","a"),
     "groupd": {"save":"a"}
   },
   {
@@ -255,7 +240,7 @@ tests  = (
     "input" : "ab",
     "start" : "save3",
     "rest"  : "b",
-    "groups" : ("a","a"),
+    "groups": ("a","a"),
     "groupd": {"save":"a","save2":"a"}
   },
   {
@@ -263,86 +248,80 @@ tests  = (
     "input" : "abc",
     "start" : "save4",
     "rest"  : "",
-    "groups" : ("abc",),
+    "groups": ("abc",),
     "groupd": {"save":"abc"}
   },
-  # {
-    # "name"  : "sequence_00",
-    # "input" : "abc",
-    # "start" : "sequence0",
-    # "rest"  : "c",
-    # "groups" : {}
-  # },
-  # {
-    # "name"  : "sequence_01",
-    # "input" : "",
-    # "start" : "sequence0",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "sequence_02",
-    # "input" : "abc",
-    # "start" : "sequence1",
-    # "rest"  : "c",
-    # "groups" : {"save":"a"}
-  # },
-  # {
-    # "name"  : "sequence_03",
-    # "input" : "",
-    # "start" : "sequence1",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "sequence_04",
-    # "input" : "abc",
-    # "start" : "sequence2",
-    # "rest"  : "c",
-    # "groups" : {"save":"b"}
-  # },
-  # {
-    # "name"  : "sequence_05",
-    # "input" : "",
-    # "start" : "sequence2",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "sequence_06",
-    # "input" : "abc",
-    # "start" : "sequence3",
-    # "rest"  : "c",
-    # "groups" : {"save":"b"}
-  # },
-  # {
-    # "name"  : "sequence_07",
-    # "input" : "",
-    # "start" : "sequence3",
-    # "rest"  : None,
-    # "groups" : None
-  # },
-  # {
-    # "name"  : "sequence_08",
-    # "input" : "ab",
-    # "start" : "sequence4",
-    # "rest"  : "",
-    # "groups" : {"save0":"a","save1":"b"}
-  # },
-  # {
-    # "name"  : "sequence_09",
-    # "input" : "abc",
-    # "start" : "sequence4",
-    # "rest"  : "c",
-    # "groups" : {"save0":"a","save1":"b"}
-  # },
-  # {
-    # "name"  : "sequence_10",
-    # "input" : "a",
-    # "start" : "sequence3",
-    # "rest"  : None,
-    # "groups" : None
-  # },
+  {
+    "name"  : "sequence_00",
+    "input" : "abc",
+    "start" : "sequence0",
+    "rest"  : "c",
+  },
+  {
+    "name"  : "sequence_01",
+    "input" : "",
+    "start" : "sequence0",
+  },
+  {
+    "name"  : "sequence_02",
+    "input" : "abc",
+    "start" : "sequence1",
+    "rest"  : "c",
+    "groups": ("a",),
+    "groupd": {"save":"a"}
+  },
+  {
+    "name"  : "sequence_03",
+    "input" : "",
+    "start" : "sequence1",
+  },
+  {
+    "name"  : "sequence_04",
+    "input" : "abc",
+    "start" : "sequence2",
+    "rest"  : "c",
+    "groups": ("b",),
+    "groupd": {"save":"b"}
+  },
+  {
+    "name"  : "sequence_05",
+    "input" : "",
+    "start" : "sequence2",
+  },
+  {
+    "name"  : "sequence_06",
+    "input" : "abc",
+    "start" : "sequence3",
+    "rest"  : "c",
+    "groups": ("b",),
+    "groupd": {"save":"b"}
+  },
+  {
+    "name"  : "sequence_07",
+    "input" : "",
+    "start" : "sequence3",
+  },
+  {
+    "name"  : "sequence_08",
+    "input" : "ab",
+    "start" : "sequence4",
+    "rest"  : "",
+    "groups": ("a","b"),
+    "groupd": {"save0":"a","save1":"b"}
+  },
+  {
+    "name"  : "sequence_09",
+    "input" : "abc",
+    "start" : "sequence4",
+    "rest"  : "c",
+    "groups": ("a","b"),
+    "groupd": {"save0":"a","save1":"b"}
+  },
+  {
+    "name"  : "sequence_10",
+    "input" : "a",
+    "start" : "sequence3",
+  },
 )
 
 for test in tests:

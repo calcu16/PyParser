@@ -16,7 +16,13 @@ def private():
         self._result    = "" if isstr else ()
       else:
         self._result    = result
+    def parent(self):
+      return self._parent
+    def root(self):
+      return self if self._parent is None else self._parent
     def _add(self, value, name=None):
+      if self._parent is not None:
+        self._parent._add(value, name)
       if name is None:
         if value is not None and self.loc < len(self._groups):
           self._groups[self.loc] = value
@@ -36,15 +42,12 @@ def private():
       if name is not None:
         self._add(None, name)
     def __iadd__(self, rhs):
-      if issubclass(type(rhs), ParseMatch):
-        if self._matching:
-          self._result += rhs._result
-        for group in rhs._groups:
-          self._add(group)
-        for key,value in rhs._groupdict.items():
-          self._add(value, key)
-      elif not self._matching:
+      if self._parent is not None:
+        self._parent += rhs
+      if not self._matching:
         pass
+      elif issubclass(type(rhs), ParseMatch):
+        self._result += rhs._result
       elif self._isstr:
         self._result += "".join(rhs)
       else:
