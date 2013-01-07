@@ -125,7 +125,7 @@ def private():
     def __and__(lhs, rhs):
       return Sequence(children=[lhs,rhs])
     def __call__(self, name=None):
-      return Save(self, name)
+      return Match(self, name)
     def __lshift__(self, input):
       nonlocal SUCC, FAIL
       assert(self.grammar is not None)
@@ -188,9 +188,9 @@ def private():
       pmatch += self.pattern
       return partial(succ,input=input,pmatch=pmatch,fail=fail)
   # matches a value and saves it in the match object
-  class Save(ParseObject):
+  class Match(ParseObject):
     def __init__(self, sym, name=None, *args, **kwargs):
-      super(Save,self).__init__(children=[sym], *args, **kwargs)
+      super(Match,self).__init__(children=[sym], *args, **kwargs)
       self.sym  = sym
       self.name = name
     def __str__(self):
@@ -209,7 +209,7 @@ def private():
     def nomatch(self, pmatch, seen=set()):
       if self not in seen:
         pmatch.nochild(self.name)
-      return super(Save,self).nomatch(pmatch=pmatch,seen=seen)
+      return super(Match,self).nomatch(pmatch=pmatch,seen=seen)
   # fails to parse
   global Fail
   class Fail(ParseObject):

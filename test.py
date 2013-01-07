@@ -32,29 +32,29 @@ import unittest
 grammar = Grammar()
 grammar["any0"]        = Any()
 grammar["any1"]        = Any(count=2)
-grammar["choice0"]     = (Pattern("a") | Pattern("b"))("save")
-grammar["choice1"]     = Fail(value=1) & Any()("save") & Any() \
-                       | Fail(value=2) & Any() & Any()("save")
-grammar["choice2"]     = Fail(value=2) & Any()("save") & Any() \
-                       | Fail(value=1) & Any() & Any()("save")
-grammar["choice3"]     = Any()("save") & Any() & Fail(value=1) \
-                       | Any() & Any()("save") & Fail(value=2)
-grammar["choice4"]     = Any()("save") & Any() & Fail(value=2) \
-                       | Any() & Any()("save") & Fail(value=1)
+grammar["choice0"]     = (Pattern("a") | Pattern("b"))("match")
+grammar["choice1"]     = Fail(value=1) & Any()("match") & Any() \
+                       | Fail(value=2) & Any() & Any()("match")
+grammar["choice2"]     = Fail(value=2) & Any()("match") & Any() \
+                       | Fail(value=1) & Any() & Any()("match")
+grammar["choice3"]     = Any()("match") & Any() & Fail(value=1) \
+                       | Any() & Any()("match") & Fail(value=2)
+grammar["choice4"]     = Any()("match") & Any() & Fail(value=2) \
+                       | Any() & Any()("match") & Fail(value=1)
 grammar["cont0"]       = Fail(value=None)
 grammar["cont1"]       = Fail(value=1)
+grammar["match0"]      = Any()("match")
+grammar["match1"]      = (Any(count=2))("match")
+grammar["match2"]      = (Any())("match")("match")
+grammar["match3"]      = (Any())("match")("match2")
+grammar["match4"]      = (Pattern("abc"))("match")
 grammar["pattern0"]    = Pattern("")
 grammar["pattern1"]    = Pattern("abc")
-grammar["save0"]       = Any()("save")
-grammar["save1"]       = (Any(count=2))("save")
-grammar["save2"]       = (Any())("save")("save")
-grammar["save3"]       = (Any())("save")("save2")
-grammar["save4"]       = (Pattern("abc"))("save")
 grammar["sequence0"]   = Any() & Any()
-grammar["sequence1"]   = (Any())("save") & Any()
-grammar["sequence2"]   = Any() & (Any())("save")
-grammar["sequence3"]   = Any() & (Any())("save") & Fail(value=1)
-grammar["sequence4"]   = (Any())("save0") & (Any())("save1")
+grammar["sequence1"]   = (Any())("match") & Any()
+grammar["sequence2"]   = Any() & (Any())("match")
+grammar["sequence3"]   = Any() & (Any())("match") & Fail(value=1)
+grammar["sequence4"]   = (Any())("match0") & (Any())("match1")
 
 class TestBase(unittest.TestCase):
   def setUp(self):
@@ -104,7 +104,7 @@ tests  = (
     "start" : "choice0",
     "rest"  : "c",
     "groups": ("a",),
-    "groupd": {"save":"a"}
+    "groupd": {"match":"a"}
    },
   {
     "name"  : "choice_01",
@@ -112,7 +112,7 @@ tests  = (
     "start" : "choice0",
     "rest"  : "c",
     "groups": ("b",),
-    "groupd": {"save":"b"}
+    "groupd": {"match":"b"}
   },
   {
     "name"  : "choice_02",
@@ -125,7 +125,7 @@ tests  = (
     "start" : "choice1",
     "rest"  : "c",
     "groups": ("a",None),
-    "groupd": {"save":"a"}
+    "groupd": {"match":"a"}
   },
   {
     "name"  : "choice_04",
@@ -138,7 +138,7 @@ tests  = (
     "start" : "choice2",
     "rest"  : "c",
     "groups": (None,"b"),
-    "groupd": {"save":"b"}
+    "groupd": {"match":"b"}
   },
   {
     "name"  : "choice_06",
@@ -151,7 +151,7 @@ tests  = (
     "start" : "choice3",
     "rest"  : "c",
     "groups": ("a",None),
-    "groupd": {"save":"a"}
+    "groupd": {"match":"a"}
   },
   {
     "name"  : "choice_08",
@@ -164,7 +164,7 @@ tests  = (
     "start" : "choice4",
     "rest"  : "c",
     "groups": (None,"b"),
-    "groupd": {"save":"b"}
+    "groupd": {"match":"b"}
   },
   {
     "name"  : "choice_10",
@@ -181,6 +181,51 @@ tests  = (
     "input" : "",
     "start" : "cont1",
     "rest"  : "",
+  },
+  {
+    "name"  : "match_00",
+    "input" : "ab",
+    "start" : "match0",
+    "rest"  : "b",
+    "groups": ("a",),
+    "groupd": {"match":"a"}
+  },
+  {
+    "name"  : "match_01",
+    "input" : "",
+    "start" : "match0",
+  },
+  {
+    "name"  : "match_02",
+    "input" : "abc",
+    "start" : "match1",
+    "rest"  : "c",
+    "groups": ("ab",),
+    "groupd": {"match":"ab"}
+  },
+  {
+    "name"  : "match_03",
+    "input" : "ab",
+    "start" : "match2",
+    "rest"  : "b",
+    "groups": ("a","a"),
+    "groupd": {"match":"a"}
+  },
+  {
+    "name"  : "match_04",
+    "input" : "ab",
+    "start" : "match3",
+    "rest"  : "b",
+    "groups": ("a","a"),
+    "groupd": {"match":"a","match2":"a"}
+  },
+  {
+    "name"  : "match_05",
+    "input" : "abc",
+    "start" : "match4",
+    "rest"  : "",
+    "groups": ("abc",),
+    "groupd": {"match":"abc"}
   },
   {
     "name"  : "pattern_00",
@@ -207,51 +252,6 @@ tests  = (
     "rest"  : "def",
   },
   {
-    "name"  : "save_00",
-    "input" : "ab",
-    "start" : "save0",
-    "rest"  : "b",
-    "groups": ("a",),
-    "groupd": {"save":"a"}
-  },
-  {
-    "name"  : "save_01",
-    "input" : "",
-    "start" : "save0",
-  },
-  {
-    "name"  : "save_02",
-    "input" : "abc",
-    "start" : "save1",
-    "rest"  : "c",
-    "groups": ("ab",),
-    "groupd": {"save":"ab"}
-  },
-  {
-    "name"  : "save_03",
-    "input" : "ab",
-    "start" : "save2",
-    "rest"  : "b",
-    "groups": ("a","a"),
-    "groupd": {"save":"a"}
-  },
-  {
-    "name"  : "save_04",
-    "input" : "ab",
-    "start" : "save3",
-    "rest"  : "b",
-    "groups": ("a","a"),
-    "groupd": {"save":"a","save2":"a"}
-  },
-  {
-    "name"  : "save_05",
-    "input" : "abc",
-    "start" : "save4",
-    "rest"  : "",
-    "groups": ("abc",),
-    "groupd": {"save":"abc"}
-  },
-  {
     "name"  : "sequence_00",
     "input" : "abc",
     "start" : "sequence0",
@@ -268,7 +268,7 @@ tests  = (
     "start" : "sequence1",
     "rest"  : "c",
     "groups": ("a",),
-    "groupd": {"save":"a"}
+    "groupd": {"match":"a"}
   },
   {
     "name"  : "sequence_03",
@@ -281,7 +281,7 @@ tests  = (
     "start" : "sequence2",
     "rest"  : "c",
     "groups": ("b",),
-    "groupd": {"save":"b"}
+    "groupd": {"match":"b"}
   },
   {
     "name"  : "sequence_05",
@@ -294,7 +294,7 @@ tests  = (
     "start" : "sequence3",
     "rest"  : "c",
     "groups": ("b",),
-    "groupd": {"save":"b"}
+    "groupd": {"match":"b"}
   },
   {
     "name"  : "sequence_07",
@@ -307,7 +307,7 @@ tests  = (
     "start" : "sequence4",
     "rest"  : "",
     "groups": ("a","b"),
-    "groupd": {"save0":"a","save1":"b"}
+    "groupd": {"match0":"a","match1":"b"}
   },
   {
     "name"  : "sequence_09",
@@ -315,7 +315,7 @@ tests  = (
     "start" : "sequence4",
     "rest"  : "c",
     "groups": ("a","b"),
-    "groupd": {"save0":"a","save1":"b"}
+    "groupd": {"match0":"a","match1":"b"}
   },
   {
     "name"  : "sequence_10",
