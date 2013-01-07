@@ -41,6 +41,7 @@ grammar["choice3"]     = Any()("match") & Any() & Fail(value=1) \
                        | Any() & Any()("match") & Fail(value=2)
 grammar["choice4"]     = Any()("match") & Any() & Fail(value=2) \
                        | Any() & Any()("match") & Fail(value=1)
+grammar["choice5"]     = (Pattern("a") | Pattern("b")("match")) & Any()("match")
 grammar["cont0"]       = Fail(value=None)
 grammar["cont1"]       = Fail(value=1)
 grammar["match0"]      = Any()("match")
@@ -170,6 +171,14 @@ tests  = (
     "name"  : "choice_10",
     "input" : "c",
     "start" : "choice4",
+  },
+  {
+    "name"  : "choice_11",
+    "input" : "ac",
+    "start" : "choice5",
+    "rest"  : "",
+    "groups": (None,"c"),
+    "groupd": {"match":"c"}
   },
   {
     "name"  : "cont_00",

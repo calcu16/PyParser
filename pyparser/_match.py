@@ -17,11 +17,12 @@ def private():
       else:
         self._result    = result
     def loc(self,value=None):
+      old = self._loc
       if value is not None:
         if self._parent:
           self._parent.loc(self._parent.loc() + self._loc - value)
         self._loc = value
-      return self._loc
+      return old
     def parent(self):
       return self._parent
     def root(self):

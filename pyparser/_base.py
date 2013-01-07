@@ -255,15 +255,20 @@ def private():
     def __str__(self):
       return "|".join(p.str(self.prec) for p in self.choices)
     @assertParse
-    def parse(self, input, fail, pmatch, **kwargs):
+    def parse(self, input, fail, pmatch, succ, **kwargs):
       inputs = input.fork(len(self.children))
       queue  = PriorityQueue(len(self.children))
       loc = pmatch.loc()
       self.nomatch(pmatch)
-      pmatch.loc(loc)
+      loc = pmatch.loc(loc)
       pmatches = (deepcopy(pmatch),) + tuple(deepcopy(child.nomatch(pmatch)) for child in self.children)
+      @assertSucc
+      def succ2(pmatch, **skwargs):
+        nonlocal loc, succ
+        pmatch.loc(loc)
+        return partial(succ,pmatch=pmatch,**skwargs)
       for i, (input,child) in enumerate(zip(inputs,self.children)):
-        queue.put((0,i,partial(child.parse,input=input,pmatch=pmatches[i],**kwargs)))
+        queue.put((0,i,partial(child.parse,input=input,pmatch=pmatches[i],succ=succ2,**kwargs)))
       current = queue.get()
       @assertCont
       def cont2(fail, **kwargs):
