@@ -31,6 +31,7 @@ def private():
   from weakref import ref
   from copy import copy
   
+  
   global identity
   def identity(val):
     return val
@@ -87,6 +88,8 @@ def private():
       self.parent = parent 
       self.deque  = copy(seed)
       self.index  = 0
+    def loc(self):
+      return self.index
     def fork(self, n=1):
       if n == 1:
         return self.parent.fork(self.deque)
