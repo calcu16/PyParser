@@ -27,43 +27,46 @@
 # either expressed or implied, of the FreeBSD Project.
 
 from pyparser import Grammar, Any, Fail, Pattern, parse
-from pyparser._match import ParseMatch
+from pyparser import re as re2
 import unittest
+
+match  = { "name" : "match" , "pre" : re2.Match.child, "post" : re2.Match.parent }
+match2 = { "name" : "match2", "pre" : re2.Match.child, "post" : re2.Match.parent }
 
 grammar = Grammar()
 grammar["any0"]        = Any()
 grammar["any1"]        = Any(count=2)
-grammar["choice0"]     = (Pattern("a") | Pattern("b"))("match")
-grammar["choice1"]     = Fail(value=1) & Any()("match") & Any() \
-                       | Fail(value=2) & Any() & Any()("match")
-grammar["choice2"]     = Fail(value=2) & Any()("match") & Any() \
-                       | Fail(value=1) & Any() & Any()("match")
-grammar["choice3"]     = Any()("match") & Any() & Fail(value=1) \
-                       | Any() & Any()("match") & Fail(value=2)
-grammar["choice4"]     = Any()("match") & Any() & Fail(value=2) \
-                       | Any() & Any()("match") & Fail(value=1)
-grammar["choice5"]     = (Pattern("a") | Pattern("b")("match")) & Any()("match")
+grammar["choice0"]     = (Pattern("a") | Pattern("b"))(**match)
+grammar["choice1"]     = Fail(value=1) & Any()(**match) & Any() \
+                       | Fail(value=2) & Any() & Any()(**match)
+grammar["choice2"]     = Fail(value=2) & Any()(**match) & Any() \
+                       | Fail(value=1) & Any() & Any()(**match)
+grammar["choice3"]     = Any()(**match) & Any() & Fail(value=1) \
+                       | Any() & Any()(**match) & Fail(value=2)
+grammar["choice4"]     = Any()(**match) & Any() & Fail(value=2) \
+                       | Any() & Any()(**match) & Fail(value=1)
+grammar["choice5"]     = (Pattern("a") | Pattern("b")(**match)) & Any()(**match)
 grammar["cont0"]       = Fail(value=None)
 grammar["cont1"]       = Fail(value=1)
-grammar["match0"]      = Any()("match")
-grammar["match1"]      = (Any(count=2))("match")
-grammar["match2"]      = (Any())("match")("match")
-grammar["match3"]      = (Any())("match")("match2")
-grammar["match4"]      = (Pattern("abc"))("match")
+grammar["match0"]      = Any()(**match)
+grammar["match1"]      = (Any(count=2))(**match)
+grammar["match2"]      = (Any())(**match)(**match)
+grammar["match3"]      = (Any())(**match)(**match2)
+grammar["match4"]      = (Pattern("abc"))(**match)
 grammar["pattern0"]    = Pattern("")
 grammar["pattern1"]    = Pattern("abc")
 grammar["sequence0"]   = Any() & Any()
-grammar["sequence1"]   = (Any())("match") & Any()
-grammar["sequence2"]   = Any() & (Any())("match")
-grammar["sequence3"]   = Any() & (Any())("match") & Fail(value=1)
-grammar["sequence4"]   = (Any())("match0") & (Any())("match1")
+grammar["sequence1"]   = (Any())(**match) & Any()
+grammar["sequence2"]   = Any() & (Any())(**match)
+grammar["sequence3"]   = Any() & (Any())(**match) & Fail(value=1)
+grammar["sequence4"]   = (Any())(**match) & (Any())(**match2)
 
 class TestBase(unittest.TestCase):
   def setUp(self):
     pass
   def runTest(self, input, start, rest, groups, groupd):
     global grammar
-    result = parse(grammar[start], input, ParseMatch(start=0, isstr=True))
+    result = parse(grammar[start], input, re2.Match())
     if rest is None and groups is None and groupd is None:
       self.assertIsNone(result)
     else:
@@ -317,7 +320,7 @@ tests  = (
     "start" : "sequence4",
     "rest"  : "",
     "groups": ("a","b"),
-    "groupd": {"match0":"a","match1":"b"}
+    "groupd": {"match":"a","match2":"b"}
   },
   {
     "name"  : "sequence_09",
@@ -325,7 +328,7 @@ tests  = (
     "start" : "sequence4",
     "rest"  : "c",
     "groups": ("a","b"),
-    "groupd": {"match0":"a","match1":"b"}
+    "groupd": {"match":"a","match2":"b"}
   },
   {
     "name"  : "sequence_10",

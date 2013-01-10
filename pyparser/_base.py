@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2012, Andrew Carter
+# Copyright (c) 2012, 2013, Andrew Carter
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ def private():
   from queue import PriorityQueue
   from sys import stderr
   from ._util import begins, fork, identity, tailEval, badcall
-  from ._match import ParseMatch
+  
   DEBUGGING = None
   def DEBUG(self, input, **kwargs):
     nonlocal DEBUGGING
@@ -137,8 +137,8 @@ def private():
       return Choice(children=[lhs,rhs])
     def __and__(lhs, rhs):
       return Sequence(children=[lhs,rhs])
-    def __call__(self, name=None):
-      return Match(self, name)
+    def __call__(self, **kwargs):
+      return Match(self, **kwargs)
     def __lshift__(self, input):
       return parse(self, input)
     def nomatch(self, pmatch, seen = set()):
@@ -193,9 +193,11 @@ def private():
       return partial(succ,input=input,pmatch=pmatch,fail=fail)
   # matches a value and saves it in the match object
   class Match(ParseObject):
-    def __init__(self, sym, name=None, *args, **kwargs):
+    def __init__(self, sym, pre=identity, post=identity, name=None, *args, **kwargs):
       super(Match,self).__init__(children=[sym], *args, **kwargs)
       self.sym  = sym
+      self.pre  = pre
+      self.post = post
       self.name = name
     def __str__(self):
       if self.name:
@@ -204,11 +206,12 @@ def private():
         return "(?P<%s>%s)" % (self.name, self.sym)
     @assertParse
     def parse(self, input, succ, pmatch, **kwargs):
-      pmatch  = pmatch.child(start=input.loc(), name=self.name)
+      pmatch  = self.pre(pmatch, loc=input.loc(), name=self.name)
       #assertSucc
-      def cleanup(pmatch, **skwargs):
+      def cleanup(pmatch, input, **skwargs):
         nonlocal self, succ
-        return partial(succ,pmatch=pmatch.parent(),**skwargs)
+        pmatch = self.post(pmatch, loc=input.loc(), name=self.name)
+        return partial(succ, pmatch=pmatch, input=input, **skwargs)
       return partial(self.sym.parse,input=input,succ=cleanup,pmatch=pmatch,**kwargs)
     def nomatch(self, pmatch, seen=set()):
       if self not in seen:
@@ -262,14 +265,14 @@ def private():
     def parse(self, input, fail, pmatch, succ, **kwargs):
       inputs = input.fork(len(self.children))
       queue  = PriorityQueue(len(self.children))
-      loc = pmatch.loc()
+      loc = pmatch.tell()
       self.nomatch(pmatch)
-      loc = pmatch.loc(loc)
+      loc, _ = pmatch.tell(), pmatch.seek(loc)
       pmatches = (deepcopy(pmatch),) + tuple(deepcopy(child.nomatch(pmatch)) for child in self.children)
       @assertSucc
       def succ2(pmatch, **skwargs):
         nonlocal loc, succ
-        pmatch.loc(loc)
+        pmatch.seek(loc)
         return partial(succ,pmatch=pmatch,**skwargs)
       for i, (input,child) in enumerate(zip(inputs,self.children)):
         queue.put((0,i,partial(child.parse,input=input,pmatch=pmatches[i],succ=succ2,**kwargs)))
