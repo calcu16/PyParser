@@ -77,7 +77,20 @@ def private():
   def makeSucc(kwargs):
     def expand(succ=None,inv=None,**kwargs):
       return kwargs
-    return expand(**kwargs)
+    return expand(**kwargs)  
+  
+  global parse
+  def parse(pobj, input, pmatch=None):
+    nonlocal SUCC, FAIL
+    assert(pobj.grammar is not None)
+    parseArgs = {
+      'input'     : fork(input),
+      'succ'      : SUCC,
+      'fail'      : FAIL,
+      'pmatch'    : pmatch,
+      'inv'       : None
+    }
+    return tailEval(pobj.parse(**parseArgs))
   
   global Grammar
   class Grammar(object):
@@ -127,16 +140,7 @@ def private():
     def __call__(self, name=None):
       return Match(self, name)
     def __lshift__(self, input):
-      nonlocal SUCC, FAIL
-      assert(self.grammar is not None)
-      parseArgs = {
-        'input'     : fork(input),
-        'succ'      : SUCC,
-        'fail'      : FAIL,
-        'pmatch'    : ParseMatch(start=0, isstr=issubclass(type(input),str)),
-        'inv'       : None,
-      }
-      return tailEval(self.parse(**parseArgs))
+      return parse(self, input)
     def nomatch(self, pmatch, seen = set()):
       if self in seen: return pmatch
       seen = copy(seen)

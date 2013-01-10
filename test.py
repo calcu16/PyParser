@@ -26,7 +26,8 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from pyparser import Grammar, Any, Fail, Pattern
+from pyparser import Grammar, Any, Fail, Pattern, parse
+from pyparser._match import ParseMatch
 import unittest
 
 grammar = Grammar()
@@ -62,7 +63,7 @@ class TestBase(unittest.TestCase):
     pass
   def runTest(self, input, start, rest, groups, groupd):
     global grammar
-    result = grammar[start] << input
+    result = parse(grammar[start], input, ParseMatch(start=0, isstr=True))
     if rest is None and groups is None and groupd is None:
       self.assertIsNone(result)
     else:
