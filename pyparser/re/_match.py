@@ -43,13 +43,6 @@ def private():
         self._result    = ""
       else:
         self._result    = result
-    def tell(self):
-      return self._loc
-    def seek(self,value):
-      if value is not None:
-        if self._parent:
-          self._parent.seek(self._parent.tell() + self._loc - value)
-        self._loc = value
     def parent(self, **kwargs):
       return self._parent
     def root(self):
@@ -75,6 +68,8 @@ def private():
       self._add(None)
       if name is not None:
         self._add(None, name)
+      if self._parent:
+        self._parent.nochild(name)
     def __iadd__(self, rhs):
       if self._parent is not None:
         self._parent += rhs

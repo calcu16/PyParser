@@ -28,6 +28,7 @@
 
 def private():
   from copy import copy, deepcopy
+  from itertools import chain
   from functools import partial
   from queue import PriorityQueue
   from sys import stderr
@@ -90,7 +91,8 @@ def private():
       'pmatch'    : pmatch,
       'inv'       : None
     }
-    return tailEval(pobj.parse(**parseArgs))
+    result = tailEval(pobj.parse(**parseArgs))
+    return result
   
   global Grammar
   class Grammar(object):
@@ -141,6 +143,8 @@ def private():
       return Match(self, **kwargs)
     def __lshift__(self, input):
       return parse(self, input)
+    def __neg__(self):
+      return Negative(self)
     def nomatch(self, pmatch, seen = set()):
       if self in seen: return pmatch
       seen = copy(seen)
@@ -159,6 +163,8 @@ def private():
     @assertParse
     def parse(self, **kwargs):
       return partial(self.grammar.lookup[self.name].parse, **kwargs)
+    def __invert__(self):
+      return self.grammar.lookup[self.name]
   # matches any value
   global Any
   class Any(ParseObject):
@@ -237,23 +243,23 @@ def private():
       return partial(fail,value=self.value,cont=cont)
   # a sequence of symbls
   class Sequence(ParseObject):
-    def __init__(self, *args, **kwargs):
-      super(Sequence,self).__init__(*args,**kwargs)
+    def __init__(self, children, *args, **kwargs):
+      super(Sequence,self).__init__(children=children,*args,**kwargs)
       self.prec = 1
     def __str__(self):
       return "".join(p.str(self.prec) for p in self.children)
     @assertParse
-    def parse(self, input, succ, **kwargs):
+    def parse(self, input, succ, pmatch, **kwargs):
       acc = succ
       for p in reversed(self.children):
         def bind(p, acc):
           @assertSucc
           def succ(input, pmatch, **skwargs):
             nonlocal kwargs, p, acc
-            return partial(p.parse,input=input,succ=acc,**kwargs)
+            return partial(p.parse,input=input,succ=acc,pmatch=pmatch,**kwargs)
           return succ
         acc = bind(p, acc)
-      return partial(acc,input=input, **makeSucc(kwargs))
+      return partial(acc,input=input,pmatch=pmatch,**makeSucc(kwargs))
   # and ordered choice
   class Choice(ParseObject):
     def __init__(self, *args, **kwargs):
@@ -265,17 +271,24 @@ def private():
     def parse(self, input, fail, pmatch, succ, **kwargs):
       inputs = input.fork(len(self.children))
       queue  = PriorityQueue(len(self.children))
-      loc = pmatch.tell()
-      self.nomatch(pmatch)
-      loc, _ = pmatch.tell(), pmatch.seek(loc)
-      pmatches = (deepcopy(pmatch),) + tuple(deepcopy(child.nomatch(pmatch)) for child in self.children)
-      @assertSucc
-      def succ2(pmatch, **skwargs):
-        nonlocal loc, succ
-        pmatch.seek(loc)
-        return partial(succ,pmatch=pmatch,**skwargs)
+      
+      def bind(choice):
+        @assertSucc
+        def cleanup(pmatch, **skwargs):
+          nonlocal choice, succ
+          for child in self.children[choice+1:]:
+            pmatch = child.nomatch(pmatch)
+          return partial(succ,pmatch=pmatch,**skwargs)
+        @assertSucc
+        def succ2(pmatch, **skwargs):
+          nonlocal self, choice, kwargs
+          func = partial(self.children[choice].parse, **kwargs)
+          for child in self.children[:choice]:
+            pmatch = child.nomatch(pmatch)
+          return partial(func,pmatch=pmatch,succ=cleanup,**skwargs)
+        return succ2
       for i, (input,child) in enumerate(zip(inputs,self.children)):
-        queue.put((0,i,partial(child.parse,input=input,pmatch=pmatches[i],succ=succ2,**kwargs)))
+        queue.put((0,i,partial(bind(i),input=input,pmatch=deepcopy(pmatch))))
       current = queue.get()
       @assertCont
       def cont2(fail, **kwargs):
@@ -294,7 +307,28 @@ def private():
         if current[0] == last:
           return partial(current[2],fail=fail2)
         return partial(fail,value=last-current[0],cont=cont2)
-      return current[2](fail=fail2)
+      return partial(current[2],fail=fail2)
+  class Negative(ParseObject):
+    def __init__(self, sym, *args, **kwargs):
+      super(Negative,self).__init__(children=(sym,),*args,**kwargs)
+    def __str__(self):
+      return "(?!" + str(self.children[0]) + ")"
+    @assertParse
+    def parse(self, input, fail, pmatch, succ, **kwargs):
+      input2 = input.fork()
+      def succ2(**skwargs):
+        nonlocal fail
+        return partial(fail,value=None,cont=DIE)
+      def fail2(**fkwargs):
+        nonlocal succ, input2, kwargs, makeSucc
+        return partial(succ,input=input2,pmatch=pmatch,fail=fail,**makeSucc(kwargs))
+      return partial(self.children[0].parse,input=input,pmatch=deepcopy(pmatch),fail=fail2,succ=succ2,**kwargs)
+  global AbstractMatch
+  class AbstractMatch(object):
+    def __init__(self, *args, **kwargs):
+      pass
+    def __iadd__(self, rhs):
+      return self
       
       
 private()

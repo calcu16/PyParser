@@ -46,6 +46,9 @@ grammar["choice3"]     = Any()(**match) & Any() & Fail(value=1) \
 grammar["choice4"]     = Any()(**match) & Any() & Fail(value=2) \
                        | Any() & Any()(**match) & Fail(value=1)
 grammar["choice5"]     = (Pattern("a") | Pattern("b")(**match)) & Any()(**match)
+grammar["choice6"]     = Pattern("a") & Pattern("b") \
+                       | (Pattern("a") & Pattern("c"))(**match) \
+                       | Pattern("a") & Pattern("c")
 grammar["cont0"]       = Fail(value=None)
 grammar["cont1"]       = Fail(value=1)
 grammar["match0"]      = Any()(**match)
@@ -53,6 +56,7 @@ grammar["match1"]      = (Any(count=2))(**match)
 grammar["match2"]      = (Any())(**match)(**match)
 grammar["match3"]      = (Any())(**match)(**match2)
 grammar["match4"]      = (Pattern("abc"))(**match)
+grammar["negative0"]   = Pattern("abc") & -Any(count=1)
 grammar["pattern0"]    = Pattern("")
 grammar["pattern1"]    = Pattern("abc")
 grammar["sequence0"]   = Any() & Any()
@@ -60,6 +64,8 @@ grammar["sequence1"]   = (Any())(**match) & Any()
 grammar["sequence2"]   = Any() & (Any())(**match)
 grammar["sequence3"]   = Any() & (Any())(**match) & Fail(value=1)
 grammar["sequence4"]   = (Any())(**match) & (Any())(**match2)
+grammar["sequence5"]   = Any(count=0) & Any(count=0)
+grammar["sequence6"]   = Any() & Any() & Any()
 
 class TestBase(unittest.TestCase):
   def setUp(self):
@@ -185,6 +191,14 @@ tests  = (
     "groupd": {"match":"c"}
   },
   {
+    "name"  : "choice_12",
+    "input" : "ac",
+    "start" : "choice6",
+    "rest"  : "",
+    "groups": ("ac",),
+    "groupd": {"match":"ac"}
+  },
+  {
     "name"  : "cont_00",
     "input" : "",
     "start" : "cont0",
@@ -239,6 +253,17 @@ tests  = (
     "rest"  : "",
     "groups": ("abc",),
     "groupd": {"match":"abc"}
+  },
+  {
+    "name"  : "negative_00",
+    "input" : "abc",
+    "start" : "negative0",
+    "rest"  : "",
+  },
+  {
+    "name"  : "negative_01",
+    "input" : "abcd",
+    "start" : "negative0",
   },
   {
     "name"  : "pattern_00",
@@ -333,7 +358,24 @@ tests  = (
   {
     "name"  : "sequence_10",
     "input" : "a",
-    "start" : "sequence3",
+    "start" : "sequence4",
+  },
+  {
+    "name"  : "sequence_11",
+    "input" : "ab",
+    "start" : "sequence5",
+    "rest"  : "ab"
+  },
+  {
+    "name"  : "sequence_12",
+    "input" : "abcd",
+    "start" : "sequence6",
+    "rest"  : "d"
+  },
+  {
+    "name"  : "sequence_13",
+    "input" : "ab",
+    "start" : "sequence6",
   },
 )
 

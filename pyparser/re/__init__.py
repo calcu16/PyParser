@@ -27,3 +27,4 @@
 # either expressed or implied, of the FreeBSD Project.
 
 from ._match import Match
+from ._re import compile

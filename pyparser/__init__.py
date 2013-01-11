@@ -26,4 +26,4 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from ._base import parse, Grammar, Any, Fail, Pattern
+from ._base import parse, AbstractMatch, Grammar, Any, Fail, Pattern
