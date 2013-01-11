@@ -27,6 +27,7 @@
 # either expressed or implied, of the FreeBSD Project.
 
 def private():
+  from .. import BasicMatch
   def lift(match, default=None):
     return match._result if match else default
   global Match

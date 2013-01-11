@@ -26,63 +26,35 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from .. import Grammar, Any, Pattern, parse, AbstractMatch
+from .. import Grammar, Any, Charset, Pattern, parse, BasicMatch
 
 _regrammar = Grammar()
 
-class EmptyMatch(AbstractMatch):
-  def __init__(self, parent=None):
-    self.parent = parent
-  def pre (self, **kwargs):
-    assert(False)
-    return EmptyMatch(self)
-  def post(self, **kwargs):
-    self.parent += Any(count=0)
-    return self.parent
+IgnoreMatch= BasicMatch(iadd=lambda lhs, rhs : None, consume=None)
+PatMatch   = BasicMatch(iadd=lambda lhs, rhs : lhs + rhs,consume=lambda result : Pattern("".join(result)), result=())
+SetMatch   = BasicMatch(iadd=lambda lhs, rhs : lhs + rhs,consume=lambda result : Charset(result), result=())
+SeqMatch   = BasicMatch(iadd=lambda lhs, rhs : lhs & rhs,result=Any(count=0))
+OptMatch   = BasicMatch(iadd=lambda lhs, rhs : lhs | rhs,result=-Any(count=0)) 
+StartMatch = BasicMatch(iadd=lambda lhs, rhs : rhs      ,consume=None)
 
-class CharMatch(AbstractMatch):
-  def __init__(self, parent=None):
-    self.result = ""
-    self.parent = parent
-  def pre (self, **kwargs):
-    return CharMatch(self)
-  def post(self, **kwargs):
-    self.parent += Pattern(self.result)
-    return self.parent
-  def __iadd__(self, rhs):
-    assert(type(rhs) is not Any)
-    self.result += "".join(rhs)
-    return self
-
-class SeqMatch(AbstractMatch):
-  def __init__(self, parent=None):
-    self.result = Any(count=0)
-    self.parent = parent
-  def pre (self, **kwargs):
-    return SeqMatch(self)
-  def post(self, **kwargs):
-    self.parent += self.result
-    return self.parent
-  def __iadd__(self, rhs):
-    self.result = self.result & rhs
-    return self
-
-class StartMatch(AbstractMatch):
-  def __init__(self, parent=None):
-    self.result = None
-    self.parent = parent
-  def __iadd__(self, rhs):
-    self.result = rhs
-    return self
 
 regrammar = Grammar()
-regrammar["empty"] = Any(count=0)(pre=CharMatch.pre,post=CharMatch.post)
-regrammar["_char"] = Pattern("a") | Pattern("b") | Pattern("c") | Pattern("d")
-regrammar[ "char"] = regrammar["_char"](pre=CharMatch.pre,post=CharMatch.post)
-regrammar[ "atom"] = regrammar["char"]
+regrammar["|"]     = Pattern("|")(op=IgnoreMatch)
+regrammar["(?:"]   = Pattern("(?:")(op=IgnoreMatch)
+regrammar[")"]     = Pattern(")")(op=IgnoreMatch)
+regrammar["["]     = Pattern("[")(op=IgnoreMatch)
+regrammar["]"]     = Pattern("]")(op=IgnoreMatch)
+regrammar["empty"] = Any(count=0)(op=PatMatch)
+regrammar["_char"] = -Charset(set=set(('(','|',')',']'))) & Any(count=1)
+regrammar[ "char"] = regrammar["_char"](op=PatMatch)
+regrammar[ "prec"] = regrammar["(?:"] & regrammar["re"] & regrammar[")"]
+regrammar[ "atom"] = regrammar["char"] | regrammar["prec"]
 regrammar["_seqz"] = regrammar["atom"] & regrammar["seqz"] | regrammar["empty"]
-regrammar[ "seqz"] = regrammar["_seqz"](pre=SeqMatch.pre,post=SeqMatch.post)
-regrammar["start"] = regrammar["seqz"] & -Any(count=1)
+regrammar[ "seqz"] = regrammar["_seqz"](op=SeqMatch)
+regrammar["_opts"] = regrammar["seqz"] & regrammar["|"] & regrammar["opts"] | regrammar["seqz"]
+regrammar[ "opts"] = regrammar["_opts"](op=OptMatch)
+regrammar[   "re"] = regrammar["opts"]
+regrammar["start"] = regrammar["re"] & -Any(count=1)
 
 class _compiled(object):
   def __init__(self, match):
@@ -93,5 +65,5 @@ class _compiled(object):
 
 def compile(pattern):
   global regrammar
-  match = parse(regrammar["start"], pattern, StartMatch())
+  match = parse(regrammar["start"], pattern, StartMatch.produce(None))
   return _compiled(match)
