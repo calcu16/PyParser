@@ -25,3 +25,73 @@
 # The views and conclusions contained in the software and documentation are those
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
+
+from .. import Grammar, Any, Pattern, parse, AbstractMatch
+
+_regrammar = Grammar()
+
+class EmptyMatch(AbstractMatch):
+  def __init__(self, parent=None):
+    self.parent = parent
+  def pre (self, **kwargs):
+    assert(False)
+    return EmptyMatch(self)
+  def post(self, **kwargs):
+    self.parent += Any(count=0)
+    return self.parent
+
+class CharMatch(AbstractMatch):
+  def __init__(self, parent=None):
+    self.result = ""
+    self.parent = parent
+  def pre (self, **kwargs):
+    return CharMatch(self)
+  def post(self, **kwargs):
+    self.parent += Pattern(self.result)
+    return self.parent
+  def __iadd__(self, rhs):
+    assert(type(rhs) is not Any)
+    self.result += "".join(rhs)
+    return self
+
+class SeqMatch(AbstractMatch):
+  def __init__(self, parent=None):
+    self.result = Any(count=0)
+    self.parent = parent
+  def pre (self, **kwargs):
+    return SeqMatch(self)
+  def post(self, **kwargs):
+    self.parent += self.result
+    return self.parent
+  def __iadd__(self, rhs):
+    self.result = self.result & rhs
+    return self
+
+class StartMatch(AbstractMatch):
+  def __init__(self, parent=None):
+    self.result = None
+    self.parent = parent
+  def __iadd__(self, rhs):
+    self.result = rhs
+    return self
+
+regrammar = Grammar()
+regrammar["empty"] = Any(count=0)(pre=CharMatch.pre,post=CharMatch.post)
+regrammar["_char"] = Pattern("a") | Pattern("b") | Pattern("c") | Pattern("d")
+regrammar[ "char"] = regrammar["_char"](pre=CharMatch.pre,post=CharMatch.post)
+regrammar[ "atom"] = regrammar["char"]
+regrammar["_seqz"] = regrammar["atom"] & regrammar["seqz"] | regrammar["empty"]
+regrammar[ "seqz"] = regrammar["_seqz"](pre=SeqMatch.pre,post=SeqMatch.post)
+regrammar["start"] = regrammar["seqz"] & -Any(count=1)
+
+class _compiled(object):
+  def __init__(self, match):
+    self.grammar = Grammar()
+    self.grammar["start"] = match[0].result
+  def __str__(self):
+    return str(~self.grammar["start"])
+
+def compile(pattern):
+  global regrammar
+  match = parse(regrammar["start"], pattern, StartMatch())
+  return _compiled(match)
