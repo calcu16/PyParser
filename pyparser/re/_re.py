@@ -26,7 +26,8 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from .. import Grammar, Any, Charset, Pattern, parse, BasicMatch
+from .. import Grammar, Any, Charset, Pattern, parse
+from .._match import BasicMatch
 
 _regrammar = Grammar()
 
@@ -39,20 +40,14 @@ StartMatch = BasicMatch(iadd=lambda lhs, rhs : rhs      ,consume=None)
 
 
 regrammar = Grammar()
-regrammar["|"]     = Pattern("|")(op=IgnoreMatch)
-regrammar["(?:"]   = Pattern("(?:")(op=IgnoreMatch)
-regrammar[")"]     = Pattern(")")(op=IgnoreMatch)
-regrammar["["]     = Pattern("[")(op=IgnoreMatch)
-regrammar["]"]     = Pattern("]")(op=IgnoreMatch)
-regrammar["empty"] = Any(count=0)(op=PatMatch)
-regrammar["_char"] = -Charset(set=set(('(','|',')',']'))) & Any(count=1)
-regrammar[ "char"] = regrammar["_char"](op=PatMatch)
-regrammar[ "prec"] = regrammar["(?:"] & regrammar["re"] & regrammar[")"]
+regrammar["empty"] = Pattern("")                                          ^ (lambda _ : Pattern(""))
+regrammar[ "char"] = -Charset(set=set('()[]|')) & Any(count=1)            ^ (lambda a : Pattern(a[0]))
+regrammar[ "prec"] = Pattern("(?:") & regrammar["re"] & Pattern(")")      ^ (lambda l, re, r : re)
 regrammar[ "atom"] = regrammar["char"] | regrammar["prec"]
-regrammar["_seqz"] = regrammar["atom"] & regrammar["seqz"] | regrammar["empty"]
-regrammar[ "seqz"] = regrammar["_seqz"](op=SeqMatch)
-regrammar["_opts"] = regrammar["seqz"] & regrammar["|"] & regrammar["opts"] | regrammar["seqz"]
-regrammar[ "opts"] = regrammar["_opts"](op=OptMatch)
+regrammar[ "seqz"] = regrammar["atom"] & regrammar["seqz"]                ^ (lambda lhs, rhs : lhs & rhs) \
+                   | regrammar["empty"]
+regrammar[ "opts"] = regrammar["seqz"] & Pattern("|") & regrammar["opts"] ^ (lambda lhs, op, rhs : lhs | rhs) \
+                   | regrammar["seqz"]
 regrammar[   "re"] = regrammar["opts"]
 regrammar["start"] = regrammar["re"] & -Any(count=1)
 

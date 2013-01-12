@@ -32,6 +32,7 @@ def private():
   from functools import partial
   from queue import PriorityQueue
   from sys import stderr
+  from ._match import YaccMatch
   from ._util import begins, fork, identity, tailEval, badcall
   
   DEBUGGING = None
@@ -141,13 +142,12 @@ def private():
       return Choice(children=[lhs,rhs])
     def __and__(lhs, rhs):
       return Sequence(children=[lhs,rhs])
-    def __call__(self, op=None, **kwargs):
-      if op is not None:
-        kwargs['produce'] = op.produce
-        kwargs['consume'] = op.consume
-      return Match(self, **kwargs)
+    def __call__(self, gen=None, **kwargs):
+      return Match(self, gen=gen, **kwargs)
     def __lshift__(self, input):
       return parse(self, input)
+    def __xor__(self, func):
+      return Match(self,gen=YaccMatch(func=func))
     def __neg__(self):
       return Negative(self)
     def nomatch(self, pmatch, seen = set()):
@@ -228,11 +228,10 @@ def private():
       return partial(succ,input=input,pmatch=pmatch,fail=fail)
   # matches a value and saves it in the match object
   class Match(ParseObject):
-    def __init__(self, sym, produce=None, consume=None, name=None, *args, **kwargs):
+    def __init__(self, sym, gen=None, name=None, *args, **kwargs):
       super(Match,self).__init__(children=[sym], *args, **kwargs)
       self.sym  = sym
-      self.produce = produce
-      self.consume = consume
+      self.gen = gen
       self.name = name
     def __str__(self):
       if self.name:
@@ -241,19 +240,21 @@ def private():
         return "(?P<%s>%s)" % (self.name, self.sym)
     @assertParse
     def parse(self, input, succ, pmatch, **kwargs):
-      if self.produce:
-        pmatch  = self.produce(parent=pmatch, loc=input.loc(), name=self.name)
+      if self.gen:
+        pmatch  = self.gen.produce(parent=pmatch, loc=input.loc(), name=self.name)
+        assert(pmatch is not None)
       #assertSucc
       def cleanup(pmatch, input, **skwargs):
         nonlocal self, succ
-        if self.consume:
+        if pmatch.consume:
           pmatch = pmatch.consume(loc=input.loc(), name=self.name)
+          assert(pmatch is not None)
         return partial(succ, pmatch=pmatch, input=input, **skwargs)
       return partial(self.sym.parse,input=input,succ=cleanup,pmatch=pmatch,**kwargs)
     def nomatch(self, pmatch, seen=set()):
       if self not in seen:
         pmatch.nochild(self.name)
-      if self.produce.capture:
+      if self.gen.capture:
         return super(Match,self).nomatch(pmatch=pmatch,seen=seen)
       else:
         return pmatch
@@ -368,23 +369,5 @@ def private():
       return self.children[0].alwaysFail()
     def alwaysFail(self):
       return self.children[0].alwaysSucc()
-  global BasicMatch
-  class BasicMatch(object):
-    def __init__(self, parent=None, consume=identity, iadd=None, result=None, capture=True, *args, **kwargs):
-      self.parent = parent
-      self.result = copy(result)
-      self._consume = consume
-      self._iadd = iadd
-      self.capture = capture
-    def __iadd__(self, rhs):
-      if self._iadd:
-        self.result = self._iadd(self.result, rhs)
-      return self
-    def produce(self, parent=None, **kwargs):
-      return type(self)(parent=parent,consume=self._consume,iadd=self._iadd,result=self.result)
-    def consume(self, **kwargs):
-      if self.parent and self._consume:
-        self.parent += self._consume(self.result)
-      return self.parent
       
 private()

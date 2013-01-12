@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2012, 2013, Andrew Carter
+# Copyright (c) 2013, Andrew Carter
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,4 +26,5 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from ._base import parse, Charset, Grammar, Any, Fail, Pattern
+from .basic import BasicMatch
+from .yacc  import YaccMatch
