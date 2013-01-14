@@ -27,18 +27,10 @@
 # either expressed or implied, of the FreeBSD Project.
 
 from .basic import BasicMatch
-from functools import partial
 
-def _iadd(lhs, rhs, name, **kwargs):
-  return partial(lhs, rhs) if name is None else partial(lhs, **{name:rhs})
-def _consume(result, **kwargs):
-  return result()
-
-class YaccMatch(BasicMatch):
+class NoMatch(BasicMatch):
   def __init__(self, copy=None, func=None, *args, **kwargs):
     if copy:
-      super(YaccMatch,self).__init__(copy=copy, *args, **kwargs)
+      super(NoMatch,self).__init__(copy=copy, *args, **kwargs)
     else:
-      super(YaccMatch,self).__init__(consume=_consume, result=self.func, iadd=_iadd, *args, **kwargs)
-    
-  
+      super(NoMatch,self).__init__(consume=None, result=(), iadd=lambda lhs, rhs: lhs + (rhs,), *args, **kwargs)

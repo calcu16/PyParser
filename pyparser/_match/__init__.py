@@ -28,3 +28,4 @@
 
 from .basic import BasicMatch
 from .yacc  import YaccMatch
+from .nomatch import NoMatch

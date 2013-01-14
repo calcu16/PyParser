@@ -40,13 +40,13 @@ StartMatch = BasicMatch(iadd=lambda lhs, rhs : rhs      ,consume=None)
 
 
 regrammar = Grammar()
-regrammar["empty"] = Pattern("")                                          ^ (lambda _ : Pattern(""))
-regrammar[ "char"] = -Charset(set=set('()[]|')) & Any(count=1)            ^ (lambda a : Pattern(a[0]))
-regrammar[ "prec"] = Pattern("(?:") & regrammar["re"] & Pattern(")")      ^ (lambda l, re, r : re)
+regrammar["empty"] = ~Pattern("")                                          ^ (lambda : Pattern(""))
+regrammar[ "char"] = ~-Charset(set=set('()[]|')) & Any(count=1)            ^ (lambda a : Pattern(a[0]))
+regrammar[ "prec"] = ~Pattern("(?:") & regrammar["re"] & ~Pattern(")")     ^ (lambda re : re)
 regrammar[ "atom"] = regrammar["char"] | regrammar["prec"]
-regrammar[ "seqz"] = regrammar["atom"] & regrammar["seqz"]                ^ (lambda lhs, rhs : lhs & rhs) \
+regrammar[ "seqz"] = regrammar["atom"] & regrammar["seqz"]                 ^ (lambda lhs, rhs : lhs & rhs) \
                    | regrammar["empty"]
-regrammar[ "opts"] = regrammar["seqz"] & Pattern("|") & regrammar["opts"] ^ (lambda lhs, op, rhs : lhs | rhs) \
+regrammar[ "opts"] = regrammar["seqz"] & ~Pattern("|") & regrammar["opts"] ^ (lambda lhs, rhs : lhs | rhs) \
                    | regrammar["seqz"]
 regrammar[   "re"] = regrammar["opts"]
 regrammar["start"] = regrammar["re"] & -Any(count=1)
@@ -56,7 +56,7 @@ class _compiled(object):
     self.grammar = Grammar()
     self.grammar["start"] = match[0].result
   def __str__(self):
-    return str(~self.grammar["start"])
+    return str(self.grammar["start"].resolve())
 
 def compile(pattern):
   global regrammar

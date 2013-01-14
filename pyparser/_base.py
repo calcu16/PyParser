@@ -32,7 +32,7 @@ def private():
   from functools import partial
   from queue import PriorityQueue
   from sys import stderr
-  from ._match import YaccMatch
+  from ._match import YaccMatch, NoMatch
   from ._util import begins, fork, identity, tailEval, badcall
   
   DEBUGGING = None
@@ -97,7 +97,8 @@ def private():
   
   global Grammar
   class Grammar(object):
-    def __init__(self):
+    def __init__(self, *args):
+      self.children = args
       self.lookup   = {}
     def __setitem__(self, name, item):
       self.lookup[name] = item
@@ -136,18 +137,20 @@ def private():
         for child in self.children: child.grammar = value
     def str(self, prec):
       return ("(?:%s)" if prec < self.prec else "%s") % str(self)
+    def __call__(self, gen=None, **kwargs):
+      return Match(self, gen=gen, **kwargs)
+    def __xor__(self, func):
+      return Match(self,gen=YaccMatch(func=func))
+    def __invert__(self):
+      return Match(self,gen=NoMatch())
     def __or__(lhs, rhs):
       if lhs.alwaysFail(): return rhs
       if rhs.alwaysFail(): return lhs
       return Choice(children=[lhs,rhs])
     def __and__(lhs, rhs):
       return Sequence(children=[lhs,rhs])
-    def __call__(self, gen=None, **kwargs):
-      return Match(self, gen=gen, **kwargs)
     def __lshift__(self, input):
       return parse(self, input)
-    def __xor__(self, func):
-      return Match(self,gen=YaccMatch(func=func))
     def __neg__(self):
       return Negative(self)
     def nomatch(self, pmatch, seen = set()):
@@ -171,9 +174,12 @@ def private():
       return("(?$%s)" % self.name)
     @assertParse
     def parse(self, **kwargs):
-      return partial(self.grammar.lookup[self.name].parse, **kwargs)
-    def __invert__(self):
-      return self.grammar.lookup[self.name]
+      return partial(self.resolve().parse, **kwargs)
+    def resolve(self):
+      for grammar in chain((self.grammar,),self.grammar.children):
+        if self.name in grammar.lookup:
+          return self.grammar.lookup[self.name]
+      raise KeyError(self.name)
   # matches any value
   global Any
   class Any(ParseObject):
@@ -207,6 +213,25 @@ def private():
       try:
         match = next(input)
         if match in self.set:
+          pmatch += match,
+          return partial(succ,input=input,pmatch=pmatch,fail=fail)
+      except StopIteration:
+        pass
+      return DIE(fail)
+  global Range
+  class Range(ParseObject):
+    def __init__(self, start, end, *args, **kwargs):
+      super(Range,self).__init__(*args,**kwargs)
+      self.start = start
+      self.end   = end
+    def __str__(self):
+      return "[" + str(self.start) + "-" + str(self.end) + "]"
+    @ assertParse
+    def parse(self, input, succ, fail, pmatch, **kwargs):
+      nonlocal DIE
+      try:
+        match = next(input)
+        if start <= match <= end:
           pmatch += match,
           return partial(succ,input=input,pmatch=pmatch,fail=fail)
       except StopIteration:
@@ -277,11 +302,11 @@ def private():
         return partial(succ,fail=fail,input=input,pmatch=pmatch)
       return partial(fail,value=self.value,cont=cont)
     def alwaysFail(self):
-      return True
+      return self.value is None
   # a sequence of symbls
   class Sequence(ParseObject):
-    def __init__(self, children, *args, **kwargs):
-      super(Sequence,self).__init__(children=children,*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+      super(Sequence,self).__init__(*args,**kwargs)
       self.prec = 1
     def __str__(self):
       return "".join(p.str(self.prec) for p in self.children)
@@ -369,5 +394,4 @@ def private():
       return self.children[0].alwaysFail()
     def alwaysFail(self):
       return self.children[0].alwaysSucc()
-      
 private()

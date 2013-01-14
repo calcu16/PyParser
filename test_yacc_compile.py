@@ -25,20 +25,33 @@
 # The views and conclusions contained in the software and documentation are those
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
-
-from .basic import BasicMatch
 from functools import partial
+from pyparser.re import compile
+import unittest
 
-def _iadd(lhs, rhs, name, **kwargs):
-  return partial(lhs, rhs) if name is None else partial(lhs, **{name:rhs})
-def _consume(result, **kwargs):
-  return result()
+class YaccCompileTestBase(unittest.TestCase):
+  def setUp(self):
+    pass
+  def runTest(self, pattern):
+    self.assertEqual(str(compile(pattern)), pattern)
+  def addTest(name, pattern):
+    setattr(YaccCompileTestBase, "test_" + name, lambda self : self.runTest(pattern))
 
-class YaccMatch(BasicMatch):
-  def __init__(self, copy=None, func=None, *args, **kwargs):
-    if copy:
-      super(YaccMatch,self).__init__(copy=copy, *args, **kwargs)
-    else:
-      super(YaccMatch,self).__init__(consume=_consume, result=self.func, iadd=_iadd, *args, **kwargs)
-    
-  
+tests = {
+  "",
+  "a",
+  "b",
+  "c",
+  "d",
+  "aa",
+  "abcda",
+  "abc|cab",
+  "(?:ab|c)d",
+  "deadbeef"
+}
+
+for i, test in enumerate(tests):
+  YaccCompileTestBase.addTest(str(i), test)
+
+if __name__ == '__main__':
+  unittest.main()

@@ -33,21 +33,23 @@ from copy import copy
 _sentinel = object()
 
 class BasicMatch(object):
-  def __init__(self, parent=None, copy=None, consume=_sentinel, iadd=_sentinel, result=_sentinel, capture=_sentinel, *args, **kwargs):
+  def __init__(self, parent=None, copy=None, consume=_sentinel, iadd=_sentinel, result=_sentinel, capture=_sentinel, name=_sentinel, *args, **kwargs):
     self.parent = parent
     if copy is not None:
       self.result   = copy.result if result is _sentinel else result
       self._consume = copy._consume if consume is _sentinel else consume
       self._iadd    = copy._iadd if iadd is _sentinel else iadd
       self.capture  = copy.capture if capture is _sentinel else capture
+      self.name     = copy.name if name is _sentinel else name
     else:
       self.result   = None if result is _sentinel else result
       self._consume = identity if consume is _sentinel else consume
       self._iadd    = None if iadd is _sentinel else iadd
       self.capture  = True if capture is _sentinel else capture
+      self.name     = None if name is _sentinel else name
   def __iadd__(self, rhs):
     if self._iadd:
-      self.result = self._iadd(self.result, rhs)
+      self.result = self._iadd(lhs=self.result, rhs=rhs, name=name)
     return self
   def nochild(self, *args, **kwargs):
     return self

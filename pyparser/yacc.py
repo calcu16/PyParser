@@ -6,10 +6,10 @@
 # modification, are permitted provided that the following conditions are met: 
 #
 # 1. Redistributions of source code must retain the above copyright notice, this
-#  list of conditions and the following disclaimer. 
+#    list of conditions and the following disclaimer. 
 # 2. Redistributions in binary form must reproduce the above copyright notice,
-#  this list of conditions and the following disclaimer in the documentation
-#  and/or other materials provided with the distribution. 
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution. 
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -25,20 +25,42 @@
 # The views and conclusions contained in the software and documentation are those
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
-
-from .basic import BasicMatch
+from . import Grammar
+from . import Pattern, Any, Fail, CharSet, Range
+from ._match import BasicMatch
 from functools import partial
 
 def _iadd(lhs, rhs, name, **kwargs):
-  return partial(lhs, rhs) if name is None else partial(lhs, **{name:rhs})
+  if name is False:
+    # no match
+    return lhs
+  elif name is None:
+    # named match
+    return partial(lhs, **{name:rhs})
+  else:
+    # unnamed match
+    return partial(lhs, rhs)
 def _consume(result, **kwargs):
   return result()
 
-class YaccMatch(BasicMatch):
+class Match(BasicMatch):
   def __init__(self, copy=None, func=None, *args, **kwargs):
     if copy:
       super(YaccMatch,self).__init__(copy=copy, *args, **kwargs)
-    else:
+    elif func is not None:
       super(YaccMatch,self).__init__(consume=_consume, result=self.func, iadd=_iadd, *args, **kwargs)
-    
-  
+    else:
+      super(YaccMatch,self).__init__(consume=None,*args,**kwargs)
+
+def compile(value):
+  if issubclass(type(value),str):
+    return None
+  return value
+
+class Capture(object):
+  def __init__(self, func=None, *args, **kwargs):
+    super(Capture,self).__init__(*args, **kwargs)
+    self.func = func
+  def __rxor__(self, lhs):
+    return compile(lhs) ^ self.func
+
