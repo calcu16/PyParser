@@ -26,39 +26,34 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-import unittest
-from pyparser import Grammar, parse
-from functools import partial
-from pyparser.match import Empty
+from .._util import identity
+from copy import copy
 
-grammar = Grammar()
-suites  = {}
-
-class TestBase(unittest.TestCase):
-  def setUp(self):
-    pass
-  def runParse(self, input, start, match, rest, expected):
-    global grammar
-    result = parse(grammar[start], input, match)
-    if rest is None and result is None:
-      self.assertIsNone(result)
+_sentinel = object()
+class AbstractMatch(object):
+  def __init__(self, parent=None, copy=None, consume=_sentinel, iadd=_sentinel, result=_sentinel, capture=_sentinel, name=_sentinel, *args, **kwargs):
+    self.parent = parent
+    if copy is not None:
+      self.result   = copy.result if result is _sentinel else result
+      self._consume = copy._consume if consume is _sentinel else consume
+      self._iadd    = copy._iadd if iadd is _sentinel else iadd
+      self.capture  = copy.capture if capture is _sentinel else capture
+      self.name     = copy.name if name is _sentinel else name
     else:
-      self.assertIsNotNone(result)
-      pmatch, remainder = result
-      self.assertEqual(pmatch, Empty() if expected is None else expected)
-      self.assertEqual(list(remainder), list("" if rest is None else rest))
-  def addParseTest(name, input, match=Empty(), rest=None, result=None):
-    setattr(TestBase, "test_parse_" + name, lambda self : self.runParse(input=input, start=name[:-1], match=match, rest=rest, expected=result))
-  def loadParseTests(tests):
-    for test in tests:
-      TestBase.addParseTest(**test)
-      suite = test["name"].split("_",1)[0]
-      if suite not in suites:
-        suites[suite] = unittest.TestSuite()
-      suites[suite].addTest(TestBase('test_parse_' + test["name"]))
-
-import test_basic
-test_basic.addTests(grammar, TestBase)
-
-if __name__ == '__main__':
-  unittest.main()
+      self.result   = None if result is _sentinel else result
+      self._consume = identity if consume is _sentinel else consume
+      self._iadd    = None if iadd is _sentinel else iadd
+      self.capture  = True if capture is _sentinel else capture
+      self.name     = None if name is _sentinel else name
+  def __iadd__(self, rhs):
+    if self._iadd:
+      self.result = self._iadd(lhs=self.result, rhs=rhs, name=name)
+    return self
+  def nochild(self, *args, **kwargs):
+    return self
+  def produce(self, parent=None, **kwargs):
+    return type(self)(parent=parent,copy=self,**kwargs)
+  def consume(self, **kwargs):
+    if self.parent and self._consume:
+      self.parent += self._consume(self.result)
+    return self.parent

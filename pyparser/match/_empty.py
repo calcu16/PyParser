@@ -26,11 +26,13 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from .basic import BasicMatch
+from ._abstract import AbstractMatch
 
-class NoMatch(BasicMatch):
+class Empty(AbstractMatch):
   def __init__(self, copy=None, func=None, *args, **kwargs):
     if copy:
-      super(NoMatch,self).__init__(copy=copy, *args, **kwargs)
+      super().__init__(copy=copy, *args, **kwargs)
     else:
-      super(NoMatch,self).__init__(consume=None, result=(), iadd=lambda lhs, rhs: lhs + (rhs,), *args, **kwargs)
+      super().__init__(consume=None, *args, **kwargs)
+  def __eq__(lhs, rhs):
+    return type(lhs) == type(rhs)
