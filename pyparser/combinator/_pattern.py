@@ -26,4 +26,22 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from ._re import compile
+from .._util import begins
+from ._abstract import AbstractCombinator
+from ._abstract import DIE
+from ._debug import assertParse
+from functools import partial
+
+class Pattern(AbstractCombinator):
+  def __init__(self, pattern=(), *args, **kwargs):
+    super(Pattern,self).__init__(*args, **kwargs)
+    self.pattern = pattern
+  def __str__(self):
+    return str(self.pattern)
+  @assertParse
+  def parse(self, input, succ, fail, pmatch, **kwargs):
+    global DIE
+    if not begins(self.pattern, input):
+      return DIE(fail)
+    pmatch += tuple(self.pattern)
+    return partial(succ,input=input,pmatch=pmatch,fail=fail)

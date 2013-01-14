@@ -26,13 +26,22 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from .. import Grammar
-from .. import Pattern, Any, Fail, CharSet, Range
-from .. import NoMatch, YaccMatch
+from ._abstract import AbstractCombinator
+from ._debug import assertParse
+from functools import partial
+from itertools import chain
 
-base = Grammar()
-base["ALPHA"] = Range("a-z")                              ^ "".join           \
-              | Range("A-Z")                              ^ "".join
-base["DIGIT"] = Range("0-9")                              ^ "".join
-base["ALNUM"] = base["ALPHA"] | base["DIGIT"]                                 \
-              | Pattern("_")                              ^ "".join
+class Lookup(AbstractCombinator):
+  def __init__(self, name, *args, **kwargs):
+    super(Lookup,self).__init__(*args, **kwargs)
+    self.name = name
+  def __str__(self):
+    return("(?$%s)" % self.name)
+  @assertParse
+  def parse(self, **kwargs):
+    return partial(self.resolve().parse, **kwargs)
+  def resolve(self):
+    for grammar in chain((self.grammar,),self.grammar.children):
+      if self.name in grammar.lookup:
+        return self.grammar.lookup[self.name]
+    raise KeyError(self.name)

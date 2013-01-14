@@ -36,9 +36,6 @@ def private():
   def identity(val):
     return val
   
-  global badcall
-  def badcall(*arg, **kwargs):
-    assert(False)
   
   global tailEval
   def tailEval(val):

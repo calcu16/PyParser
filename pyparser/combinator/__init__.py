@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2012, 2013, Andrew Carter
+# Copyright (c) 2013, Andrew Carter
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,5 +25,10 @@
 # The views and conclusions contained in the software and documentation are those
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
-
-from ._grammar import Grammar, parse
+from ._any      import Any
+from ._choice   import Choice
+from ._fail     import Fail
+from ._lookup   import Lookup
+from ._negative import Negative
+from ._pattern  import Pattern
+from ._sequence import Sequence
