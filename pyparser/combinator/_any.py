@@ -39,11 +39,11 @@ class Any(AbstractCombinator):
     if self.count == 1: return "."
     return ".{%d}" % self.count
   @assertParse
-  def parse(self, input, succ, fail, pmatch, **kwargs):
+  def parse(self, input, pmatch, **kwargs):
+    global DIE
     match = tuple(next(input) for i in range(self.count))
     if len(match) < self.count:
-      global DIE
-      return DIE(fail=fail)
+      return DIE(**kwargs)
     pmatch += match
-    return partial(succ, input=input, pmatch=pmatch, fail=fail)
+    return super().parse(input=input, pmatch=pmatch, **kwargs)
 

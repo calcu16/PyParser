@@ -37,28 +37,12 @@ class Choice(AbstractCombinator):
   def __init__(self, *args, **kwargs):
     super().__init__(prec=2,sep="|",*args, **kwargs)
   
-  def makeSucc(self, choice, succ, **kwargs):
-    @assertSucc
-    def cleanup(pmatch, **skwargs):
-      nonlocal self, choice, succ
-      for child in self.children[choice+1:]:
-        pmatch = child.nomatch(pmatch)
-      return partial(succ,pmatch=pmatch,**skwargs)
-    @assertSucc
-    def setup(pmatch, **skwargs):
-      nonlocal self, choice, kwargs
-      func = partial(self.children[choice].parse, **kwargs)
-      for child in self.children[choice+1:]:
-        pmatch = child.nomatch(pmatch)
-      return partial(func,pmatch=pmatch,succ=cleanup,**skwargs)
-    return setup
-  
   @assertParse
   def parse(self, input, fail, pmatch, **kwargs):
     inputs = input.fork(len(self.children))
     queue = PriorityQueue(len(self.children))
     for i, (input,child) in enumerate(zip(inputs,self.children)):
-      queue.put((0,i,partial(self.makeSucc(choice=i,**kwargs),input=input,pmatch=copy(pmatch))))
+      queue.put((0,i,partial(child.parse,input=input,pmatch=copy(pmatch),**kwargs)))
     current = (-1, -1, badcall)
     
     @assertCont

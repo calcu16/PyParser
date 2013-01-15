@@ -26,7 +26,7 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from .basic import BasicMatch
+from ._abstract import AbstractMatch
 from functools import partial
 
 def _iadd(lhs, rhs, name, **kwargs):
@@ -34,11 +34,9 @@ def _iadd(lhs, rhs, name, **kwargs):
 def _consume(result, **kwargs):
   return result()
 
-class YaccMatch(BasicMatch):
+class Yacc(AbstractMatch):
   def __init__(self, copy=None, func=None, *args, **kwargs):
     if copy:
-      super(YaccMatch,self).__init__(copy=copy, *args, **kwargs)
+      super().__init__(copy=copy, *args, **kwargs)
     else:
-      super(YaccMatch,self).__init__(consume=_consume, result=self.func, iadd=_iadd, *args, **kwargs)
-    
-  
+      super().__init__(consume=_consume, result=self.func, iadd=_iadd, *args, **kwargs)

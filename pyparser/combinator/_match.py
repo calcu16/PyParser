@@ -52,10 +52,3 @@ class Match(AbstractCombinator):
         assert(pmatch is not None)
       return partial(succ, pmatch=pmatch, input=input, **skwargs)
     return partial(self.sym.parse,input=input,succ=cleanup,pmatch=pmatch,**kwargs)
-  def nomatch(self, pmatch, seen=set()):
-    if self not in seen:
-      pmatch.nochild(self.name)
-    if self.gen.capture:
-      return super().nomatch(pmatch=pmatch,seen=seen)
-    else:
-      return pmatch

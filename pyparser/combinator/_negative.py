@@ -46,4 +46,3 @@ class Negative(AbstractCombinator):
       nonlocal succ, input2, kwargs
       return partial(succ,input=input2,pmatch=pmatch,fail=fail,**kwargs)
     return partial(self.children[0].parse,input=input,pmatch=pmatch,fail=fail2,succ=succ2,**kwargs)
-  

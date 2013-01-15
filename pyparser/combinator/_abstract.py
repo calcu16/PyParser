@@ -29,7 +29,8 @@
 from ._debug import assertParse, badcall
 from functools import partial
 
-DIE = lambda fail : partial(fail,value=None,cont=badcall)
+def DIE(fail, **kwargs):
+  return partial(fail,value=None,cont=badcall)
 
 class AbstractCombinator(object):
   def __init__(self, grammar=None, children=(), prec=0, sep=None, *args, **kwargs):
@@ -51,8 +52,8 @@ class AbstractCombinator(object):
       for child in self.children:
         child.grammar = value
   @assertParse
-  def parse(*args, **kwargs):
-    pass
+  def parse(self, succ, **kwargs):
+    return partial(succ, **kwargs)
   def str(self):
     return self.sep.join(child.str(self.prec) for child in self.children)
   def str(self, prec):
@@ -69,9 +70,10 @@ class AbstractCombinator(object):
     return +rhs & lhs
   def __sub__(lhs, rhs):
     return -rhs & lhs
-  def nomatch(self, pmatch, seen = set()):
-    return pmatch
+  def __rshift__(self, func):
+    return YaccMatch(func=func)
 
 from ._choice import Choice
 from ._sequence import Sequence
 from ._negative import Negative
+from ..match import YaccMatch

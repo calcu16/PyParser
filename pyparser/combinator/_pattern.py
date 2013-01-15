@@ -39,9 +39,9 @@ class Pattern(AbstractCombinator):
   def __str__(self):
     return str(self.pattern)
   @assertParse
-  def parse(self, input, succ, fail, pmatch, **kwargs):
+  def parse(self, input, pmatch, **kwargs):
     global DIE
     if not begins(self.pattern, input):
-      return DIE(fail)
+      return DIE(**kwargs)
     pmatch += tuple(self.pattern)
-    return partial(succ,input=input,pmatch=pmatch,fail=fail)
+    return super().parse(input=input,pmatch=pmatch,**kwargs)

@@ -26,4 +26,5 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from ._empty import Empty
+from ._empty import Empty as EmptyMatch
+from ._yacc import Yacc as YaccMatch
