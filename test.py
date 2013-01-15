@@ -29,7 +29,7 @@
 import unittest
 from pyparser import Grammar, parse
 from functools import partial
-from pyparser.match import EmptyMatch
+from pyparser.match import LastMatch
 
 grammar = Grammar()
 suites  = {}
@@ -37,18 +37,18 @@ suites  = {}
 class TestBase(unittest.TestCase):
   def setUp(self):
     pass
-  def runParse(self, input, start, match, rest, expected):
+  def runParse(self, input, start, rest, expected):
     global grammar
-    result = parse(grammar[start], input, match)
+    result = parse(grammar[start], input, LastMatch())
     if rest is None and result is None:
       self.assertIsNone(result)
     else:
       self.assertIsNotNone(result)
       pmatch, remainder = result
-      self.assertEqual(pmatch, EmptyMatch() if expected is None else expected)
+      self.assertEqual(pmatch.result, expected)
       self.assertEqual(list(remainder), list("" if rest is None else rest))
-  def addParseTest(name, input, match=EmptyMatch(), rest=None, result=None):
-    setattr(TestBase, "test_parse_" + name, lambda self : self.runParse(input=input, start=name[:-1], match=match, rest=rest, expected=result))
+  def addParseTest(name, input, rest=None, result=None):
+    setattr(TestBase, "test_parse_" + name, lambda self : self.runParse(input=input, start=name[:-1], rest=rest, expected=result))
   def loadParseTests(tests):
     for test in tests:
       TestBase.addParseTest(**test)

@@ -26,32 +26,8 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
-from .._util import identity
-from copy import copy
+tests = (
+)
 
-_sentinel = object()
-class AbstractMatch(object):
-  def __init__(self, parent=None, copy=None, consume=_sentinel, iadd=_sentinel, result=_sentinel, capture=_sentinel, name=_sentinel, *args, **kwargs):
-    self.parent = parent
-    if copy is not None:
-      self.result   = copy.result if result is _sentinel else result
-      self._consume = copy._consume if consume is _sentinel else consume
-      self._iadd    = copy._iadd if iadd is _sentinel else iadd
-      self.capture  = copy.capture if capture is _sentinel else capture
-      self.name     = copy.name if name is _sentinel else name
-    else:
-      self.result   = None if result is _sentinel else result
-      self._consume = identity if consume is _sentinel else consume
-      self._iadd    = None if iadd is _sentinel else iadd
-      self.capture  = True if capture is _sentinel else capture
-      self.name     = None if name is _sentinel else name
-  def __iadd__(self, rhs):
-    if self._iadd:
-      self.result = self._iadd(lhs=self.result, rhs=rhs, name=self.name)
-    return self
-  def produce(self, parent=None, **kwargs):
-    return type(self)(parent=parent,copy=self,**kwargs)
-  def consume(self, **kwargs):
-    if self.parent and self._consume:
-      self.parent += self._consume(self.result)
-    return self.parent
+def addTests(grammar, testbase):
+  grammar["match_0"]      = Any() >> lambda 

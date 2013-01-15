@@ -33,11 +33,13 @@ tests = (
     "name"  : "any_00",
     "input" : "",
     "rest"  : "",
+    "result": ("",),
   },
   {
     "name"  : "any_00",
     "input" : "a",
     "rest"  : "a",
+    "result": (),
   },
   {
     "name"  : "any_10",
@@ -47,21 +49,25 @@ tests = (
     "name"  : "any_11",
     "input" : "a",
     "rest"  : "",
+    "result": ("a",),
   },
   {
     "name"  : "any_12",
     "input" : "abc",
     "rest"  : "bc",
+    "result": ("a",),
   },
   {
     "name"  : "choice_00",
     "input" : "acd",
     "rest"  : "cd",
+    "result": ("a",),
   },
   {
     "name"  : "choice_01",
     "input" : "bcd",
     "rest"  : "cd",
+    "result": ("b",),
   },
   {
     "name"  : "choice_02",
@@ -75,11 +81,13 @@ tests = (
     "name"  : "choice_10",
     "input" : "acd",
     "rest"  : "d",
+    "result": ("c",),
   },
   {
     "name"  : "choice_11",
     "input" : "bcd",
     "rest"  : "d",
+    "result": ("c",),
   },
   {
     "name"  : "choice_12",
@@ -93,11 +101,13 @@ tests = (
     "name"  : "choice_20",
     "input" : "acd",
     "rest"  : "d",
+    "result": ("c",),
   },
   {
     "name"  : "choice_21",
     "input" : "ad",
     "rest"  : "d",
+    "result": ("a",),
   },
   {
     "name"  : "choice_22",
@@ -111,11 +121,13 @@ tests = (
     "name"  : "choice_30",
     "input" : "abd",
     "rest"  : "d",
+    "result": ("b",),
   },
   {
     "name"  : "choice_31",
     "input" : "acd",
     "rest"  : "d",
+    "result": ("c",),
   },
   {
     "name"  : "choice_32",
@@ -139,6 +151,7 @@ tests = (
     "name"  : "negative_00",
     "input" : "abc",
     "rest"  : "",
+    "result": ("a","b","c",),
   },
   {
     "name"  : "negative_01",
@@ -148,21 +161,25 @@ tests = (
     "name"  : "pattern_00",
     "input" : "",
     "rest"  : "",
+    "result": (),
   },
   {
     "name"  : "pattern_01",
     "input" : "abc",
     "rest"  : "abc",
+    "result": (),
   },
   {
     "name"  : "pattern_10",
     "input" : "abc",
     "rest"  : "",
+    "result": ("a","b","c",),
   },
   {
     "name"  : "pattern_11",
     "input" : "abcdef",
     "rest"  : "def",
+    "result": ("a","b","c",),
   },
   {
     "name"  : "pattern_12",
@@ -176,11 +193,13 @@ tests = (
     "name"  : "sequence_00",
     "input" : "ab",
     "rest"  : "",
+    "result": ("b",),
   },
   {
     "name"  : "sequence_01",
     "input" : "abc",
     "rest"  : "c",
+    "result": ("b",),
   },
   {
     "name"  : "sequence_02",
@@ -194,21 +213,25 @@ tests = (
     "name"  : "sequence_10",
     "input" : "",
     "rest"  : "",
+    "result": (),
   },
   {
     "name"  : "sequence_11",
     "input" : "a",
     "rest"  : "a",
+    "result": (),
   },
   {
     "name"  : "sequence_20",
     "input" : "abc",
     "rest"  : "",
+    "result": ("c",),
   },
   {
     "name"  : "sequence_21",
     "input" : "abcdef",
     "rest"  : "def",
+    "result": ("c",),
   },
   {
     "name"  : "sequence_22",

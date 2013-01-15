@@ -28,3 +28,4 @@
 
 from ._empty import Empty as EmptyMatch
 from ._yacc import Yacc as YaccMatch
+from ._last import Last as LastMatch
