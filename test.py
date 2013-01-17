@@ -52,7 +52,7 @@ class TestBase(unittest.TestCase):
   def loadParseTests(tests):
     for test in tests:
       TestBase.addParseTest(**test)
-      suite = test["name"].split("_",1)[0]
+      suite = test["name"].rsplit("_",1)[0]
       if suite not in suites:
         suites[suite] = unittest.TestSuite()
       suites[suite].addTest(TestBase('test_parse_' + test["name"]))

@@ -30,4 +30,5 @@ tests = (
 )
 
 def addTests(grammar, testbase):
-  grammar["match_0"]      = Any() >> lambda 
+  grammar["yacc_any_0"]      = Any() >> (lambda a : a)
+

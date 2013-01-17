@@ -148,6 +148,45 @@ tests = (
     "rest"  : "",
   },
   {
+    "name"  : "empty_00",
+    "input" : "",
+    "rest"  : "",
+  },
+  {
+    "name"  : "empty_01",
+    "input" : "a",
+    "rest"  : "a",
+  },
+  {
+    "name"  : "empty_10",
+    "input" : "",
+  },
+  {
+    "name"  : "empty_11",
+    "input" : "abc",
+    "rest"  : "",
+  },
+  {
+    "name"  : "empty_12",
+    "input" : "abcdef",
+    "rest"  : "def",
+  },
+  {
+    "name"  : "empty_20",
+    "input" : "",
+  },
+  {
+    "name"  : "empty_21",
+    "input" : "abd",
+    "rest"  : "d",
+  },
+  {
+    "name"  : "empty_22",
+    "input" : "acd",
+    "rest"  : "d",
+    "result": ("a","c",),
+  },
+  {
     "name"  : "negative_00",
     "input" : "abc",
     "rest"  : "",
@@ -253,9 +292,14 @@ def addTests(grammar, testbase):
   grammar["choice_3"]   = Fail(value=1) & Pattern("a") & Fail(value=2) & Pattern("b") | Fail(value=2) & Pattern("a") & Fail(value=1) & Pattern("c")
   grammar["cont_0"]     = Fail(value=None)
   grammar["cont_1"]     = Fail(value=1)
+  grammar["empty_0"]    = ~Pattern()
+  grammar["empty_1"]    = ~Pattern("abc")
+  grammar["empty_2"]    = ~Pattern("ab") | Pattern("ac")
   grammar["negative_0"] = Pattern("abc") & -Any(count=1)
   grammar["pattern_0"]  = Pattern("")
   grammar["pattern_1"]  = Pattern("abc")
+  grammar["repeat_0"]   = Any("a")[:]
+  grammar["repeat_1"]   = Any("aaa")[3]
   grammar["sequence_0"] = Any() & Any()
   grammar["sequence_1"] = Any(count=0) & Any(count=0)
   grammar["sequence_2"] = Any() & Any() & Any()

@@ -35,7 +35,7 @@ def _consume(result, **kwargs):
   return result
 
 class Last(AbstractMatch):
-  def __init__(self, copy=None, func=None, *args, **kwargs):
+  def __init__(self, copy=None, *args, **kwargs):
     if copy:
       super().__init__(copy=copy, *args, **kwargs)
     else:

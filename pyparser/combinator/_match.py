@@ -27,11 +27,13 @@
 # either expressed or implied, of the FreeBSD Project.
 
 from ._abstract import AbstractCombinator
+from ._debug import assertParse, assertSucc
+from functools import partial
 
 class Match(AbstractCombinator):
   def __init__(self, sym, gen=None, name=None, *args, **kwargs):
     super().__init__(children=[sym], *args, **kwargs)
-    self.sym  = sym
+    self.sym = sym
     self.gen = gen
     self.name = name
   def __str__(self):
@@ -44,11 +46,10 @@ class Match(AbstractCombinator):
     if self.gen:
       pmatch = self.gen.produce(parent=pmatch, loc=input.loc(), name=self.name)
       assert(pmatch is not None)
-    #assertSucc
+    @assertSucc
     def cleanup(pmatch, input, **skwargs):
       nonlocal self, succ
       if pmatch.consume:
         pmatch = pmatch.consume(loc=input.loc(), name=self.name)
-        assert(pmatch is not None)
       return partial(succ, pmatch=pmatch, input=input, **skwargs)
     return partial(self.sym.parse,input=input,succ=cleanup,pmatch=pmatch,**kwargs)

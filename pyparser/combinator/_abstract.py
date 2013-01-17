@@ -58,6 +58,8 @@ class AbstractCombinator(object):
     return self.sep.join(child.str(self.prec) for child in self.children)
   def str(self, prec):
     return ("?:%s)" if prec < self.prec else "%s") % str(self)
+  def __invert__(self):
+    return Match(sym=self,gen=EmptyMatch())
   def __neg__(self):
     return Negative(self)
   def __pos__(self):
@@ -70,10 +72,24 @@ class AbstractCombinator(object):
     return +rhs & lhs
   def __sub__(lhs, rhs):
     return -rhs & lhs
-  def __rshift__(self, func):
-    return YaccMatch(func=func)
+  def __xor__(lhs, rhs):
+    if issubclass(type(rhs),str):
+      return Match(sym=lhs,gen=YaccMatch(func=lhs))
+    else:
+      return Match(sym=lhs,gen=LastMatch(),name=rhs)
+  def __getitem__(self,key):
+    if isinstance(key,slice):
+      return Repeat(sym=self,lower=key.start,upper=key.stop,greedy=(key.step is None or key.step>=0))
+    elif isinstance(key,int):
+      return Repeat(sym=self,lower=key,upper=key)
+    else:
+      raise(TypeError, "Invalid argument type.")
 
 from ._choice import Choice
-from ._sequence import Sequence
+from ._match import Match
 from ._negative import Negative
+from ._repeat import Repeat
+from ._sequence import Sequence
+from ..match import EmptyMatch
+from ..match import LastMatch
 from ..match import YaccMatch
