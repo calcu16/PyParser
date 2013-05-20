@@ -295,5 +295,5 @@ def addTests(grammar, testbase):
   grammar["sequence_0"] = Any() & Any()
   grammar["sequence_1"] = Any(count=0) & Any(count=0)
   grammar["sequence_2"] = Any() & Any() & Any()
+  return testbase.loadParseTests(tests, "basic")
   
-  testbase.loadParseTests(tests)

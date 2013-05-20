@@ -49,16 +49,21 @@ class TestBase(unittest.TestCase):
       self.assertEqual(list(remainder), list("" if rest is None else rest))
   def addParseTest(name, input, rest=None, result=None):
     setattr(TestBase, "test_parse_" + name, lambda self : self.runParse(input=input, start=name[:-1], rest=rest, expected=result))
-  def loadParseTests(tests):
+  def loadParseTests(tests, name):
+    print("Loading %d %s tests" % (len(tests), name))
     for test in tests:
       TestBase.addParseTest(**test)
       suite = test["name"].rsplit("_",1)[0]
       if suite not in suites:
         suites[suite] = unittest.TestSuite()
       suites[suite].addTest(TestBase('test_parse_' + test["name"]))
+    return len(tests)
 
 import test_basic
-test_basic.addTests(grammar, TestBase)
+print("Loading tests")
+count  = 0
+count += test_basic.addTests(grammar, TestBase)
+print("Loaded %d tests" % count)
 
 if __name__ == '__main__':
   unittest.main()
