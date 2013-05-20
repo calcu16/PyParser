@@ -29,8 +29,8 @@
 from ._abstract import AbstractMatch
 from functools import partial
 
-def _iadd(lhs, rhs, **kwargs):
-  return rhs
+def _iadd(lhs, child, **kwargs):
+  return child
 def _consume(result, **kwargs):
   return result
 

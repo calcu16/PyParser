@@ -26,9 +26,38 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 
+from pyparser.combinator import Any
+
 tests = (
+  {
+    "name" : "yacc_any_10",
+    "input": "",
+  },
+  {
+    "name"  : "yacc_any_11",
+    "input" : "a",
+    "result": ("a",)
+  },
+  {
+    "name"  : "yacc_sequence_00",
+    "input" : "ab",
+    "result": ("a",)
+  },
+  {
+    "name"  : "yacc_sequence_10",
+    "input" : "ab",
+    "result": ("b",)
+  },
+  {
+    "name"  : "yacc_sequence_20",
+    "input" : "ab",
+    "result": ("a",)
+  },
 )
 
 def addTests(grammar, testbase):
-  grammar["yacc_any_0"]      = Any() >> (lambda a : a)
-
+  grammar["yacc_any_1"]      = Any() ^ (lambda a : a)
+  grammar["yacc_sequence_0"] = Any() & Any() ^ (lambda a, b : a)
+  grammar["yacc_sequence_1"] = Any() & Any() ^ (lambda a, b : b)
+  grammar["yacc_sequence_2"] = (Any() ^ "f") & (Any() ^ "l") ^ (lambda **a : a["f"])
+  return testbase.loadParseTests(tests, "yacc")

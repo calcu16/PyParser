@@ -74,9 +74,9 @@ class AbstractCombinator(object):
     return -rhs & lhs
   def __xor__(lhs, rhs):
     if issubclass(type(rhs),str):
-      return Match(sym=lhs,gen=YaccMatch(func=lhs))
-    else:
       return Match(sym=lhs,gen=LastMatch(),name=rhs)
+    else:
+      return Match(sym=lhs,gen=YaccMatch(func=rhs))
   def __getitem__(self,key):
     if isinstance(key,slice):
       return Repeat(sym=self,lower=key.start,upper=key.stop,greedy=(key.step is None or key.step>=0))

@@ -29,8 +29,8 @@
 from ._abstract import AbstractMatch
 from functools import partial
 
-def _iadd(lhs, rhs, name, **kwargs):
-  return partial(lhs, rhs) if name is None else partial(lhs, **{name:rhs})
+def _iadd(lhs, child, name, **kwargs):
+  return partial(lhs, child) if name is None else partial(lhs, **{name:child})
 def _consume(result, **kwargs):
   return result()
 
@@ -39,4 +39,4 @@ class Yacc(AbstractMatch):
     if copy:
       super().__init__(copy=copy, *args, **kwargs)
     else:
-      super().__init__(consume=_consume, result=self.func, iadd=_iadd, *args, **kwargs)
+      super().__init__(consume=_consume, result=func, iadd=_iadd, *args, **kwargs)

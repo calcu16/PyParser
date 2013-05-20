@@ -59,10 +59,11 @@ class TestBase(unittest.TestCase):
       suites[suite].addTest(TestBase('test_parse_' + test["name"]))
     return len(tests)
 
-import test_basic
+import test_basic, test_yacc
 print("Loading tests")
 count  = 0
 count += test_basic.addTests(grammar, TestBase)
+count += test_yacc.addTests(grammar, TestBase)
 print("Loaded %d tests" % count)
 
 if __name__ == '__main__':

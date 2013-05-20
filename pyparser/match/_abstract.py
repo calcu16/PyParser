@@ -46,12 +46,14 @@ class AbstractMatch(object):
       self.capture  = True if capture is _sentinel else capture
       self.name     = None if name is _sentinel else name
   def __iadd__(self, rhs):
+    return self.recieve(child=rhs,name=None)
+  def recieve(self, **kwargs):
     if self._iadd:
-      self.result = self._iadd(lhs=self.result, rhs=rhs, name=self.name)
+      self.result = self._iadd(lhs=self.result, **kwargs)
     return self
   def produce(self, parent=None, **kwargs):
     return type(self)(parent=parent,copy=self,**kwargs)
   def consume(self, **kwargs):
     if self.parent and self._consume:
-      self.parent += self._consume(self.result)
+      self.parent.recieve(child=self._consume(self.result), name=self.name)
     return self.parent

@@ -224,6 +224,11 @@ tests = (
     "input" : "def",
   },
   {
+    "name"  : "repeat_00",
+    "input" : "aaa",
+    "result": ("a","a","a"),
+  },
+  {
     "name"  : "sequence_00",
     "input" : "ab",
     "result": ("b",),
