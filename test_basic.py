@@ -32,11 +32,10 @@ tests = (
   {
     "name"  : "any_00",
     "input" : "",
-    "rest"  : "",
-    "result": ("",),
+    "result": (),
   },
   {
-    "name"  : "any_00",
+    "name"  : "any_01",
     "input" : "a",
     "rest"  : "a",
     "result": (),
@@ -48,7 +47,6 @@ tests = (
   {
     "name"  : "any_11",
     "input" : "a",
-    "rest"  : "",
     "result": ("a",),
   },
   {
@@ -189,7 +187,6 @@ tests = (
   {
     "name"  : "negative_00",
     "input" : "abc",
-    "rest"  : "",
     "result": ("a","b","c",),
   },
   {
@@ -199,7 +196,6 @@ tests = (
   {
     "name"  : "pattern_00",
     "input" : "",
-    "rest"  : "",
     "result": (),
   },
   {
@@ -211,7 +207,6 @@ tests = (
   {
     "name"  : "pattern_10",
     "input" : "abc",
-    "rest"  : "",
     "result": ("a","b","c",),
   },
   {
@@ -231,7 +226,6 @@ tests = (
   {
     "name"  : "sequence_00",
     "input" : "ab",
-    "rest"  : "",
     "result": ("b",),
   },
   {
@@ -251,7 +245,6 @@ tests = (
   {
     "name"  : "sequence_10",
     "input" : "",
-    "rest"  : "",
     "result": (),
   },
   {
@@ -263,7 +256,6 @@ tests = (
   {
     "name"  : "sequence_20",
     "input" : "abc",
-    "rest"  : "",
     "result": ("c",),
   },
   {
