@@ -28,7 +28,7 @@
 
 from ._abstract import AbstractCombinator
 from ._abstract import DIE
-from ._debug import assertParse, assertSucc, assertFail, assertCont
+from ._debug import assertParse, assertSucc, assertFail, assertCont, badcall
 from copy import copy
 from functools import partial
 from queue import PriorityQueue
@@ -42,25 +42,25 @@ class Repeat(AbstractCombinator):
   def __str__(self):
     greedy = "" if self.greedy else "?"
     if not self.lower and self.upper is None:
-      return "*" + greedy
+      return str(self.children[0]) + "*" + greedy
     elif self.lower == 1 and self.upper is None:
-      return "+" + greedy
+      return str(self.children[0]) + "+" + greedy
     elif self.upper is None:
-      return "{%d,}" % self.lower + greedy
+      return str(self.children[0]) + "{%d,}" % self.lower + greedy
     elif not self.lower and self.upper == 1:
-      return "?" + greedy
+      return str(self.children[0]) + "?" + greedy
     elif self.lower == self.upper:
-      return "{%d}" % self.lower
+      return str(self.children[0]) + "{%d}" % self.lower
     elif not self.lower:
-      return "{,%d}" % self.upper + greedy
+      return str(self.children[0]) + "{,%d}" % self.upper + greedy
     else:
-      return "{%d,%d}" % (self.lower,self.upper) + greedy
+      return str(self.children[0]) + "{%d,%d}" % (self.lower,self.upper) + greedy
   @assertParse
   def parse(self, succ, fail, **kwargs):
     value = 0
     count = 0
-    greedy = -1 if greedy else 1
-    queue = PrioritQueue(len(self.children))
+    greedy = -1 if self.greedy else 1
+    queue = PriorityQueue(len(self.children))
     current = (-1, -1, badcall)
     
     @assertCont

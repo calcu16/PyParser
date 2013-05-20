@@ -40,7 +40,7 @@ class AbstractCombinator(object):
     for child in children: assert(child is not None)
     self.grammar = grammar
     self.prec = prec
-    self.sep  = None
+    self.sep  = sep
   def __setattr__(self, name, value):
     update = False
     if name == "grammar":
@@ -54,10 +54,10 @@ class AbstractCombinator(object):
   @assertParse
   def parse(self, succ, **kwargs):
     return partial(succ, **kwargs)
-  def str(self):
+  def __str__(self):
     return self.sep.join(child.str(self.prec) for child in self.children)
   def str(self, prec):
-    return ("?:%s)" if prec < self.prec else "%s") % str(self)
+    return ("(?:%s)" if prec < self.prec else "%s") % str(self)
   def __invert__(self):
     return Match(sym=self,gen=EmptyMatch())
   def __neg__(self):

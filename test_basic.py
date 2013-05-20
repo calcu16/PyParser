@@ -224,9 +224,19 @@ tests = (
     "input" : "def",
   },
   {
-    "name"  : "repeat_00",
+    "name"  : "repeat_10",
     "input" : "aaa",
     "result": ("a","a","a"),
+  },
+  {
+    "name"  : "repeat_11",
+    "input" : "aaaaa",
+    "rest"  : "aa",
+    "result": ("a","a","a"),
+  },
+  {
+    "name"  : "repeat_12",
+    "input" : "aa",
   },
   {
     "name"  : "sequence_00",
@@ -296,7 +306,7 @@ def addTests(grammar, testbase):
   grammar["pattern_0"]  = Pattern("")
   grammar["pattern_1"]  = Pattern("abc")
   grammar["repeat_0"]   = Any("a")[:]
-  grammar["repeat_1"]   = Any("aaa")[3]
+  grammar["repeat_1"]   = Any("a")[3]
   grammar["sequence_0"] = Any() & Any()
   grammar["sequence_1"] = Any(count=0) & Any(count=0)
   grammar["sequence_2"] = Any() & Any() & Any()
