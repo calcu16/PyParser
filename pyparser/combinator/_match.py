@@ -38,9 +38,9 @@ class Match(AbstractCombinator):
     self.name = name
   def __str__(self):
     if self.name:
-      return "(%s)" % self.sym
-    else:
       return "(?P<%s>%s)" % (self.name, self.sym)
+    else:
+      return "(%s)" % self.sym
   @assertParse
   def parse(self, input, succ, pmatch, **kwargs):
     if self.gen:
