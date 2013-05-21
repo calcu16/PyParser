@@ -28,7 +28,7 @@
 
 from ._abstract import AbstractCombinator
 from ._abstract import DIE
-from ._debug import assertParse, assertSucc, assertFail, assertCont, badcall
+from ._debug import assertParse, assertSucc, assertFail, assertCont, badcall, DEBUG
 from copy import copy
 from functools import partial
 from queue import PriorityQueue
@@ -60,8 +60,9 @@ class Repeat(AbstractCombinator):
     value = 0
     count = 0
     greedy = -1 if self.greedy else 1
-    queue = PriorityQueue(len(self.children))
+    queue = PriorityQueue()
     current = (-1, -1, badcall)
+    
     
     @assertCont
     def rcont(fail,**kwargs):
@@ -89,6 +90,10 @@ class Repeat(AbstractCombinator):
         queue.put((value,greedy*count,partial(succ,input=input.fork(),pmatch=copy(pmatch),fail=rfail,**skwargs)))
       count += 1
       if self.upper is None or count <= self.upper:
-        queue.put((value,greedy*count,partial(repeat,input=input,pmatch=pmatch,fail=rfail,**skwargs)))
-    
+        queue.put((value,greedy*count,partial(self.children[0].parse,succ=repeat,input=input,pmatch=pmatch,fail=rfail,**skwargs)))
+      current = queue.get()
+      value, count, func = current
+      count *= greedy
+      return func
+      
     return partial(repeat,fail=rfail,**kwargs)
